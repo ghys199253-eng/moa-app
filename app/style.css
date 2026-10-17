@@ -106,3 +106,13 @@ html[data-theme="dark"] mark{background:#695e27;color:#fff}
  .reading-actions{gap:6px}
  .reading-actions a,.reading-actions button{padding:10px 11px}
 }
+
+/* Navigation and reading ergonomics */
+.archive-top,.reading-top{position:fixed;z-index:90;right:22px;bottom:88px;width:46px;height:46px;border-radius:50%;display:grid;place-items:center;border:1px solid var(--moa-line);background:var(--moa-surface);color:var(--moa-text);box-shadow:0 5px 22px #0002}
+.reading-top{position:sticky;bottom:18px;margin:0 18px 18px auto;right:auto;z-index:9}
+.reading-modal{position:relative}
+.reading-header{position:sticky!important;top:0!important;z-index:20!important;background:var(--moa-surface)!important}
+.reading-back{width:40px;height:40px}
+.reading-header-title strong{display:block;max-width:100%;text-overflow:ellipsis;overflow:hidden;white-space:nowrap}
+.archive-controls{margin-left:auto}
+@media(max-width:750px){.archive-top{right:16px;bottom:84px}.reading-top{bottom:20px}}
