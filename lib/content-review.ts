@@ -1,5 +1,3 @@
-import {structureContent} from './content-format';
-
 export type ContentIssue={
   code:'duplicate'|'double-number'|'double-bullet'|'transcript'|'long-line'|'empty-marker'|'empty-content';
   label:string;
@@ -37,7 +35,3 @@ export function auditContent(raw:string):ContentIssue[]{
   return issues;
 }
 
-export function contentStructureSummary(raw:string,recipe=false){
- const blocks=structureContent(raw,recipe);
- return {sections:blocks.length,paragraphs:blocks.reduce((n,b)=>n+b.entries.filter(e=>e.type==='paragraph').length,0),bullets:blocks.reduce((n,b)=>n+b.entries.filter(e=>e.type==='bullet').length,0),steps:blocks.reduce((n,b)=>n+b.entries.filter(e=>e.type==='step').length,0)};
-}
