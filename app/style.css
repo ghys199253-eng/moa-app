@@ -126,3 +126,27 @@ html[data-theme="dark"] .reading-step-number{background:#35483a;color:#d0ead3}
 .reading-plain-bullet{padding-left:13px!important;border-left:2px solid var(--moa-line)}
 .reading-section{margin-bottom:30px}
 .reading-section h3{padding:0 0 9px;border-bottom:1px solid var(--moa-line)}
+
+/* Compact app-style detail view: consistent information density */
+.modal.reading-modal{width:min(620px,100%);border-radius:16px}
+.reading-header{min-height:54px!important;padding:8px 16px!important;gap:8px!important}
+.reading-header-title strong{font-size:13px!important;line-height:1.4}
+.reading-header-title span{font-size:10px}
+.reading-body{max-width:580px;padding:21px 22px 34px}
+.reading-kicker{font-size:11px;color:var(--moa-accent)}
+.reading-body>h2{font-size:23px!important;line-height:1.4!important;margin:5px 0 12px!important;letter-spacing:-.4px}
+.reading-tools{margin-bottom:20px;gap:8px}
+.reading-description{font-size:calc(var(--reading-font-size) - 1px)!important;line-height:1.65!important;padding:12px 14px;margin-bottom:18px}
+.reading-section{margin:0 0 20px!important}
+.reading-section h3{font-size:calc(var(--reading-font-size) + 1px)!important;font-weight:700;margin:0 0 10px!important;padding:0 0 7px;border-bottom:1px solid var(--moa-line)}
+.reading-lines{gap:8px!important}
+.reading-lines p,.reading-section .reading-memo{font-size:var(--reading-font-size)!important;line-height:1.65!important}
+.reading-step{grid-template-columns:26px minmax(0,1fr);gap:9px;margin:0!important;align-items:start}
+.reading-step-number{width:24px;height:24px;font-size:12px;border-radius:7px;background:#e8efe8;color:#355643}
+.reading-step p{line-height:1.65!important}
+.reading-plain-bullet{border-left:0!important;padding:0 0 0 12px!important;position:relative}
+.reading-plain-bullet:before{content:'·';position:absolute;left:0;color:var(--moa-accent);font-weight:800}
+.reading-actions{padding:13px 0;gap:7px}
+.reading-actions a,.reading-actions button{padding:9px 11px;font-size:12px}
+.reading-nav{padding:10px 0}
+@media(max-width:750px){.reading-body{padding:20px 17px 75px}.reading-header{padding:7px 12px!important}.reading-body>h2{font-size:21px!important}}
