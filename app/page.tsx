@@ -47,7 +47,7 @@ function renderStructuredContent(section:ContentSection,query:string){
   if(e.type==='bullet'||e.type==='step'){
    const group=[e];let j=i+1;
    while(j<entries.length&&entries[j].type===e.type){group.push(entries[j]);j++}
-   if(e.type==='step')parts.push(<ol className="structured-steps" start={e.number||1} key={i}>{group.map((item,k)=><li key={k}>{highlightText(item.text,query)}</li>)}</ol>);
+   if(e.type==='step')parts.push(<ol className="structured-steps" start={e.number||1} style={{counterReset:`step ${(e.number||1)-1}`}} key={i}>{group.map((item,k)=><li key={k}>{highlightText(item.text,query)}</li>)}</ol>);
    else parts.push(<ul className="structured-bullets" key={i}>{group.map((item,k)=><li key={k}>{highlightText(item.text,query)}</li>)}</ul>);
    i=j-1;continue;
   }
