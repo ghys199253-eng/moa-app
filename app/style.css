@@ -182,3 +182,20 @@ html[data-theme="dark"] .reading-step-number{background:#35483a;color:#d0ead3}
 .reading-collapsible details[open] summary{margin-bottom:12px}
 .reading-lead{font-size:var(--reading-font-size);line-height:1.7;color:var(--moa-text)}
 @media(max-width:750px){.reading-fact{grid-template-columns:minmax(78px,31%) minmax(0,1fr)}.reading-fact>span,.reading-fact>div{padding:9px 10px}}
+
+/* Source-aware information hierarchy for archive detail */
+.reading-highlight-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:9px;margin:0 0 23px}
+.reading-highlight{display:flex;flex-direction:column;gap:7px;padding:14px;border-radius:12px;background:var(--moa-bg);border:1px solid var(--moa-line);min-width:0}
+.reading-highlight span{font-size:11px;color:var(--moa-muted);font-weight:650}
+.reading-highlight strong{font-size:calc(var(--reading-font-size) + 1px);line-height:1.5;color:var(--moa-text);overflow-wrap:anywhere}
+.reading-section h3{display:flex;align-items:center;gap:8px!important;font-size:calc(var(--reading-font-size) + 1px)!important;font-weight:750!important;padding-bottom:10px!important;margin-bottom:12px!important}
+.reading-heading-symbol{display:inline-flex;align-items:center;justify-content:center;flex:0 0 23px;width:23px;height:23px;border-radius:7px;background:var(--moa-bg);color:var(--moa-accent);font-size:13px;font-weight:800}
+.reading-kind-notice{padding:14px 15px!important;border:1px solid var(--moa-line);background:var(--moa-bg);border-radius:12px;margin:14px 0 20px!important}
+.reading-kind-notice h3{border-bottom:0!important;margin-bottom:6px!important;padding:0!important}
+.reading-kind-notice .reading-heading-symbol{background:var(--moa-surface);border:1px solid var(--moa-line)}
+.reading-kind-notice .reading-lines{gap:7px!important}
+.reading-kind-qa .reading-heading-symbol{border-radius:50%}
+.reading-kind-steps .reading-plain-bullet{display:flex;gap:8px;align-items:start;padding-left:0!important}
+.reading-kind-steps .reading-plain-bullet:before{position:static!important;content:'✓';color:var(--moa-accent)}
+.reading-kind-tip .reading-heading-symbol{background:var(--moa-bg)}
+@media(max-width:750px){.reading-highlight-grid{gap:7px}.reading-highlight{padding:12px}.reading-kind-notice{padding:12px!important}}
