@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {auditContent,contentStructureSummary} from '../lib/content-review.ts';
+import {auditContent} from '../lib/content-review.ts';
+import {structureContent} from '../lib/content-format.ts';
+function contentStructureSummary(raw,recipe=false){const sections=structureContent(raw,recipe);return {sections:sections.length,paragraphs:sections.flatMap(s=>s.entries).filter(e=>e.type==='paragraph').length,bullets:sections.flatMap(s=>s.entries).filter(e=>e.type==='bullet').length,steps:sections.flatMap(s=>s.entries).filter(e=>e.type==='step').length};}
 
 test('reading checks are non-destructive and identify concrete problematic lines',()=>{
  const raw=['핵심 내용','• 같은 문장을 반복해서 보관했는데 원본을 확인해야 합니다.',
