@@ -150,3 +150,23 @@ html[data-theme="dark"] .reading-step-number{background:#35483a;color:#d0ead3}
 .reading-actions a,.reading-actions button{padding:9px 11px;font-size:12px}
 .reading-nav{padding:10px 0}
 @media(max-width:750px){.reading-body{padding:20px 17px 75px}.reading-header{padding:7px 12px!important}.reading-body>h2{font-size:21px!important}}
+
+/* In-reader category navigation */
+.reader-list-trigger{display:inline-flex;align-items:center;gap:5px;flex-shrink:0;border:1px solid var(--moa-line);border-radius:9px;background:var(--moa-surface);color:var(--moa-text);font-size:12px;font-weight:650;padding:8px 10px}
+.reader-list-overlay{position:sticky;top:54px;z-index:19;margin:0;background:var(--moa-surface);border-bottom:1px solid var(--moa-line);box-shadow:0 12px 24px #0002}
+.reader-list-sheet{display:flex;flex-direction:column;max-height:min(65dvh,540px);padding:13px 17px 8px}
+.reader-list-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}
+.reader-list-head>div{display:flex;align-items:center;gap:9px}
+.reader-list-head strong{font-size:15px}
+.reader-list-head span{font-size:12px;color:var(--moa-muted)}
+.reader-list-head button{border:0;background:transparent;color:var(--moa-text);padding:5px}
+.reader-list-search{display:flex;align-items:center;gap:8px;border:1px solid var(--moa-line);border-radius:10px;padding:9px 11px;color:var(--moa-muted);margin-bottom:8px}
+.reader-list-search input{border:0;outline:0;background:transparent;color:var(--moa-text);flex:1;min-width:0;font-size:13px}
+.reader-list-items{overflow:auto;overscroll-behavior:contain}
+.reader-list-items button{width:100%;display:flex;justify-content:space-between;align-items:center;gap:10px;text-align:left;border:0;border-bottom:1px solid var(--moa-line);background:transparent;color:var(--moa-text);padding:12px 4px;font-size:13px;line-height:1.45}
+.reader-list-items button.current{font-weight:700;color:var(--moa-accent)}
+.reader-list-items small{white-space:nowrap;font-size:10px;color:var(--moa-muted)}
+.reader-list-items p{font-size:13px;color:var(--moa-muted);padding:12px}
+.reading-paragraph-group{display:flex;flex-direction:column;gap:10px}
+.reading-paragraph-group p{margin:0}
+@media(max-width:750px){.reader-list-overlay{top:54px}.reader-list-sheet{max-height:68dvh}.reading-header-title{min-width:0}}
