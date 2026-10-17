@@ -46,15 +46,15 @@ function readingEntries(lines:string[]){
   const number=line.match(/^(\d{1,2})[.)]\s*(.*)$/)||line.match(/^([①-⑳])\s*(.*)$/);
   if(number){
    const num=number[1];
-   const value=number[2].trim();
+   const value=number[2].trim().replace(/^(?:\d{1,2}[.)]\s*)+/,'');
    if(value){entries.push({number:num,text:value,bullet:false});continue}
    continue;
   }
   if(false && entries.length&&entries[entries.length-1].number&&entries[entries.length-1].text===''){
    entries[entries.length-1].text=line;continue;
   }
-  const bullet=/^[-•✔✓●]\s*/.test(line);
-  entries.push({number:null,text:bullet?line.replace(/^[-•✔✓●]\s*/,''):line,bullet});
+  const bullet=/^[-•✔✓●+*]\s+/.test(line);
+  entries.push({number:null,text:bullet?line.replace(/^[-•✔✓●+*]\s+/,''):line,bullet});
  }
  return entries;
 }
