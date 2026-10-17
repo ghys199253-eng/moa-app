@@ -20,35 +20,6 @@ function readingParagraphs(text:string){
  for(const sentence of sentences){if(group.join(' ').length+sentence.length>160&&group.length){result.push(group.join(' '));group.length=0}group.push(sentence)}
  if(group.length)result.push(group.join(' '));return result;
 }
-function readingEntries(lines:string[]){
- const entries:{number:string|null;text:string;bullet:boolean}[]=[];
- for(const line of lines){
-  const number=line.match(/^(\d{1,2})[.)]\s*(.*)$/)||line.match(/^([①-⑳])\s*(.*)$/);
-  if(number){
-   const num=number[1];
-   const value=number[2].trim().replace(/^(?:\d{1,2}[.)]\s*)+/,'');
-   if(value){entries.push({number:num,text:value,bullet:false});continue}
-   continue;
-  }
-  if(false && entries.length&&entries[entries.length-1].number&&entries[entries.length-1].text===''){
-   entries[entries.length-1].text=line;continue;
-  }
-  const bullet=/^[-•✔✓●+*]\s+/.test(line);
-  entries.push({number:null,text:bullet?line.replace(/^[-•✔✓●+*]\s+/,''):line,bullet});
- }
- return entries;
-}
-function factRows(lines:string[]){
- const rows:{label:string;value:string}[]=[];
- for(const line of lines){
-  const match=line.match(/^([^:：\n]{1,22})\s*[:：]\s*(.{1,600})$/);
-  if(!match)return null;
-  const label=match[1].trim(),value=match[2].trim();
-  if(!label||!value||/[.!?。]$/.test(label)||/^https?:\/\//.test(value))return null;
-  rows.push({label,value});
- }
- return rows.length>=2?rows:null;
-}
 function sectionKind(heading:string){
  if(/확인 필요|주의|유의|경고|특이사항/.test(heading))return 'notice';
  if(/재료|준비물|계량|시험 정보|비용|가격|숙소 정보/.test(heading))return 'facts';
