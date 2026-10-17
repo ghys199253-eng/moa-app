@@ -23,10 +23,19 @@ function contentBlocks(raw:string,recipe:boolean){
   const heading=line.match(/^§§(.+?)§§$/)||line.match(labelRe);
   if(heading){flush();current={heading:heading[1],lines:[],index:sections.length};continue}
   // Preserve original sentences; only separate explicitly marked steps or bullets.
-  const parts=line.replace(/\\s+(?=(?:[①-⑳]|\\d{1,2}[.)]|[✔✓•●])\\s+)/g,'\\n');
+  const parts=line.replace(/\s+(?=(?:[①-⑳]|\d{1,2}[.)]|[✔✓•●])\s+)/g,'\n');
   for(const part of parts.split('\n'))if(part.trim())current.lines.push(part.trim());
  }
  flush();return sections;
+}
+function readingParagraphs(text:string){
+ // Split only unusually long unstructured text at sentence boundaries.
+ if(text.length<170)return [text];
+ const sentences=text.split(/(?<=[.!?。])\\s+(?=[가-힣A-Za-z0-9])/).filter(Boolean);
+ if(sentences.length<3)return [text];
+ const result:string[]=[],group:string[]=[];
+ for(const sentence of sentences){if(group.join(' ').length+sentence.length>160&&group.length){result.push(group.join(' '));group.length=0}group.push(sentence)}
+ if(group.length)result.push(group.join(' '));return result;
 }
 function readingEntries(lines:string[]){
  const entries:{number:string|null;text:string;bullet:boolean}[]=[];
@@ -118,7 +127,7 @@ export default function Page(){
   <div className="reading-body"><div className="reading-kicker">{displayCategory(cats.find(c=>c.id===selected.category_id)?.name||'미분류')}</div><h2>{selected.title}</h2>
   <div className="reading-tools"><span>{selected.source_type}</span><div className="font-controls" aria-label="글자 크기"><button aria-label="글자 작게" disabled={fontSize<=14} onClick={()=>setFontSize(n=>Math.max(14,n-2))}><Minus size={16}/></button><span>가</span><button aria-label="글자 크게" disabled={fontSize>=20} onClick={()=>setFontSize(n=>Math.min(20,n+2))}><Plus size={16}/></button></div></div>
   {selected.description&&<div className="reading-description">{selected.description}</div>}
-  {selected.content_text&&<div className="reading-content">{contentBlocks(selected.content_text,displayCategory(cats.find(c=>c.id===selected.category_id)?.name||'')==='레시피').map((block,i)=><section className="reading-section" key={i}>{!(i===0&&(block.heading==='상세 내용'||block.heading==='레시피 내용'))&&<h3>{block.heading}</h3>}<div className="reading-lines">{readingEntries(block.lines).map((entry,j)=>entry.number?<div key={j} className="reading-step"><span className="reading-step-number">{entry.number.replace(/[.)]/g,'')}</span><p>{highlightText(entry.text,query)}</p></div>:<p key={j} className={entry.bullet?'reading-plain-bullet':''}>{highlightText(entry.text,query)}</p>)}</div></section>)}</div>}
+  {selected.content_text&&<div className="reading-content">{contentBlocks(selected.content_text,displayCategory(cats.find(c=>c.id===selected.category_id)?.name||'')==='레시피').map((block,i)=><section className="reading-section" key={i}>{!(i===0&&(block.heading==='상세 내용'||block.heading==='레시피 내용'))&&<h3>{block.heading}</h3>}<div className="reading-lines">{readingEntries(block.lines).map((entry,j)=>entry.number?<div key={j} className="reading-step"><span className="reading-step-number">{entry.number.replace(/[.)]/g,'')}</span><p>{highlightText(entry.text,query)}</p></div>:<div key={j} className={entry.bullet?'reading-plain-bullet':'reading-paragraph-group'}>{readingParagraphs(entry.text).map((paragraph,k)=><p key={k}>{highlightText(paragraph,query)}</p>)}</div>)}</div></section>)}</div>}
   {selected.personal_memo&&<section className="reading-section"><h3>내 메모</h3><p className="reading-memo">{selected.personal_memo}</p></section>}
   <div className="reading-actions"><a href={selected.url} target="_blank" rel="noopener noreferrer"><ExternalLink size={16}/> 원본 열기</a><button onClick={()=>startEdit(selected)}><Edit3 size={16}/> 수정</button><button className="danger" onClick={()=>remove(selected)}><Trash2 size={16}/> 삭제</button></div>
   {selectedIndex>=0&&<div className="reading-nav"><button onClick={()=>moveSelected(-1)} disabled={visible.length<2}>← 이전</button><span>{selectedIndex+1} / {visible.length}</span><button onClick={()=>moveSelected(1)} disabled={visible.length<2}>다음 →</button></div>}
