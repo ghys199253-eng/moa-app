@@ -55,6 +55,31 @@ function readingEntries(lines:string[]){
  }
  return entries;
 }
+function factRows(lines:string[]){
+ const rows:{label:string;value:string}[]=[];
+ for(const line of lines){
+  const match=line.match(/^([^:：\\n]{1,22})\\s*[:：]\\s*(.{1,600})$/);
+  if(!match)return null;
+  const label=match[1].trim(),value=match[2].trim();
+  if(!label||!value||/[.!?。]$/.test(label)||/^https?\\/\\//.test(value))return null;
+  rows.push({label,value});
+ }
+ return rows.length>=2?rows:null;
+}
+function compactContent(block:{heading:string;lines:string[]},query:string){
+ const entries=readingEntries(block.lines);
+ const facts=factRows(block.lines);
+ if(facts)return <div className="reading-facts">{facts.map((row,i)=><div className="reading-fact" key={i}><span>{row.label}</span><div>{highlightText(row.value,query)}</div></div>)}</div>;
+ const numbered=entries.filter(e=>e.number).length;
+ const lengthy=numbered===0&&entries.reduce((sum,e)=>sum+e.text.length,0)>520;
+ const render=(list:typeof entries)=><div className="reading-lines">{list.map((entry,j)=>entry.number?<div key={j} className="reading-step"><span className="reading-step-number">{entry.number.replace(/[.)]/g,'')}</span><p>{highlightText(entry.text,query)}</p></div>:<div key={j} className={entry.bullet?'reading-plain-bullet':'reading-paragraph-group'}>{readingParagraphs(entry.text).map((paragraph,k)=><p key={k}>{highlightText(paragraph,query)}</p>)}</div>)}</div>;
+ if(!lengthy)return render(entries);
+ const preview=entries.length>1?entries.slice(0,2):[];
+ if(preview.length)return <div className="reading-collapsible">{render(preview)}<details><summary>나머지 내용 보기</summary>{render(entries.slice(2))}</details></div>;
+ const paragraphs=readingParagraphs(entries[0]?.text||'');
+ if(paragraphs.length<2)return render(entries);
+ return <div className="reading-collapsible"><p className="reading-lead">{highlightText(paragraphs[0],query)}</p><details><summary>자세히 보기</summary><div className="reading-lines">{paragraphs.slice(1).map((p,i)=><p key={i}>{highlightText(p,query)}</p>)}</div></details></div>;
+}
 function highlightText(text:string,query:string){
  const q=query.trim();if(!q)return text;
  const at=text.toLocaleLowerCase('ko').indexOf(q.toLocaleLowerCase('ko'));
@@ -127,7 +152,7 @@ export default function Page(){
   <div className="reading-body"><div className="reading-kicker">{displayCategory(cats.find(c=>c.id===selected.category_id)?.name||'미분류')}</div><h2>{selected.title}</h2>
   <div className="reading-tools"><span>{selected.source_type}</span><div className="font-controls" aria-label="글자 크기"><button aria-label="글자 작게" disabled={fontSize<=14} onClick={()=>setFontSize(n=>Math.max(14,n-2))}><Minus size={16}/></button><span>가</span><button aria-label="글자 크게" disabled={fontSize>=20} onClick={()=>setFontSize(n=>Math.min(20,n+2))}><Plus size={16}/></button></div></div>
   {selected.description&&<div className="reading-description">{selected.description}</div>}
-  {selected.content_text&&<div className="reading-content">{contentBlocks(selected.content_text,displayCategory(cats.find(c=>c.id===selected.category_id)?.name||'')==='레시피').map((block,i)=><section className="reading-section" key={i}>{!(i===0&&(block.heading==='상세 내용'||block.heading==='레시피 내용'))&&<h3>{block.heading}</h3>}<div className="reading-lines">{readingEntries(block.lines).map((entry,j)=>entry.number?<div key={j} className="reading-step"><span className="reading-step-number">{entry.number.replace(/[.)]/g,'')}</span><p>{highlightText(entry.text,query)}</p></div>:<div key={j} className={entry.bullet?'reading-plain-bullet':'reading-paragraph-group'}>{readingParagraphs(entry.text).map((paragraph,k)=><p key={k}>{highlightText(paragraph,query)}</p>)}</div>)}</div></section>)}</div>}
+  {selected.content_text&&<div className="reading-content">{contentBlocks(selected.content_text,displayCategory(cats.find(c=>c.id===selected.category_id)?.name||'')==='레시피').map((block,i)=><section className="reading-section" key={i}>{!(i===0&&(block.heading==='상세 내용'||block.heading==='레시피 내용'))&&<h3>{block.heading}</h3>}{compactContent(block,query)}</section>)}</div>}
   {selected.personal_memo&&<section className="reading-section"><h3>내 메모</h3><p className="reading-memo">{selected.personal_memo}</p></section>}
   <div className="reading-actions"><a href={selected.url} target="_blank" rel="noopener noreferrer"><ExternalLink size={16}/> 원본 열기</a><button onClick={()=>startEdit(selected)}><Edit3 size={16}/> 수정</button><button className="danger" onClick={()=>remove(selected)}><Trash2 size={16}/> 삭제</button></div>
   {selectedIndex>=0&&<div className="reading-nav"><button onClick={()=>moveSelected(-1)} disabled={visible.length<2}>← 이전</button><span>{selectedIndex+1} / {visible.length}</span><button onClick={()=>moveSelected(1)} disabled={visible.length<2}>다음 →</button></div>}
