@@ -4,6 +4,7 @@ import {supabase} from '@/lib/supabase';
 import {structureContent,type ContentSection} from '@/lib/content-format';
 import {auditContent} from '@/lib/content-review';
 import {Plus,Search,ExternalLink,Trash2,LogOut,Download,RefreshCw,Link2,Home,Settings,ArrowLeft,Edit3,Sun,Moon,Minus,ChevronUp,X} from 'lucide-react';
+type InstallPrompt=Event&{prompt:()=>Promise<void>;userChoice?:Promise<{outcome:string}>};
 type Category={id:string;name:string};
 type B={id:string;url:string;normalized_url:string;title:string;description:string;content_text:string|null;thumbnail_url:string|null;source_type:string;personal_memo:string;ai_summary:string|null;category_id:string|null;is_favorite:boolean;created_at:string;updated_at?:string;extraction_status:string};
 const names=['레시피','AI 활용법','생활정보','여행','쇼핑','업무','기타'];
@@ -84,9 +85,18 @@ export default function Page(){
  const [view,setView]=useState('home'),[filter,setFilter]=useState('전체'),[query,setQuery]=useState(''),[selected,setSelected]=useState<B|null>(null);
  const [url,setUrl]=useState(''),[contentText,setContentText]=useState(''),[title,setTitle]=useState(''),[memo,setMemo]=useState(''),[category,setCategory]=useState(''),[description,setDescription]=useState(''),[thumb,setThumb]=useState(''),[status,setStatus]=useState('pending'),[editing,setEditing]=useState<string|null>(null);
  const [theme,setTheme]=useState<'light'|'dark'>('light'),[fontSize,setFontSize]=useState(16);
+ const [installPrompt,setInstallPrompt]=useState<InstallPrompt|null>(null);
  const readingRef=useRef<HTMLDivElement|null>(null),readingPositions=useRef<Record<string,number>>({});
  const [scrollY,setScrollY]=useState(0),[readingY,setReadingY]=useState(0);
  const historyRef=useRef(false);
+ useEffect(()=>{
+  const onPrompt=(e:Event)=>{e.preventDefault();setInstallPrompt(e as InstallPrompt)};
+  const onInstalled=()=>setInstallPrompt(null);
+  window.addEventListener('beforeinstallprompt',onPrompt);
+  window.addEventListener('appinstalled',onInstalled);
+  return ()=>{window.removeEventListener('beforeinstallprompt',onPrompt);window.removeEventListener('appinstalled',onInstalled)};
+ },[]);
+
  useEffect(()=>{try{const saved=localStorage.getItem('moa-theme');if(saved==='dark'||saved==='light')setTheme(saved);const font=Number(localStorage.getItem('moa-font-size'));if([14,16,18,20].includes(font))setFontSize(font)}catch{}},[]);
  useEffect(()=>{document.documentElement.dataset.theme=theme;try{localStorage.setItem('moa-theme',theme)}catch{}},[theme]);
  useEffect(()=>{try{localStorage.setItem('moa-font-size',String(fontSize))}catch{}},[fontSize]);
