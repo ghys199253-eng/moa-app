@@ -104,6 +104,7 @@ export default function Page(){
  useEffect(()=>{if(user)load();else{setItems([]);setCats([])}},[user]);
  const categoryFilters=useMemo(()=>[...new Set(items.map(b=>b.category_id?displayCategory(cats.find(c=>c.id===b.category_id)?.name||'미분류'):'미분류'))].sort((a,b)=>a.localeCompare(b,'ko')),[items,cats]);
  const visible=useMemo(()=>items.filter(b=>(filter==='전체'||displayCategory(cats.find(c=>c.id===b.category_id)?.name||'')===filter||filter==='미분류'&&!b.category_id)&&[b.title,b.description,b.content_text||'',b.personal_memo,b.source_type,b.ai_summary||'',cats.find(c=>c.id===b.category_id)?.name||'',...(tags[b.id]||[])].join(' ').toLocaleLowerCase('ko').includes(query.trim().toLocaleLowerCase('ko'))).sort((a,b)=>sort==='newest'?b.created_at.localeCompare(a.created_at):sort==='updated'?(b.updated_at||b.created_at).localeCompare(a.updated_at||a.created_at):a.title.localeCompare(b.title,'ko',{numeric:true,sensitivity:'base'})),[items,filter,query,cats,tags,sort]);
+ const auditItems=useMemo(()=>items.map(item=>({item,issues:auditContent(item.content_text||'')})).filter(result=>result.issues.length>0),[items]);
  const selectedIndex=selected?visible.findIndex(b=>b.id===selected.id):-1;
  const readerCategory=selected?displayCategory(cats.find(c=>c.id===selected.category_id)?.name||'미분류'):'';
 
