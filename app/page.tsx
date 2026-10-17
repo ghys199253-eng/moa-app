@@ -107,6 +107,16 @@ export default function Page(){
  function goTop(){if(selected&&readingRef.current)readingRef.current.scrollTo({top:0,behavior:'smooth'});else window.scrollTo({top:0,behavior:'smooth'})}
  
  useEffect(()=>{if(!selected)return;const node=readingRef.current;if(node)node.scrollTop=readingPositions.current[selected.id]||0},[selected?.id]);
+ useEffect(()=>{
+  if(!selected)return;
+  const previous=document.body.style.overflow;
+  document.body.style.overflow='hidden';
+  const onKeyDown=(event:KeyboardEvent)=>{if(event.key==='Escape'){event.preventDefault();closeReader()}};
+  window.addEventListener('keydown',onKeyDown);
+  readingRef.current?.querySelector<HTMLButtonElement>('.reading-back')?.focus();
+  return ()=>{document.body.style.overflow=previous;window.removeEventListener('keydown',onKeyDown)};
+ },[selected?.id]);
+
  const [busy,setBusy]=useState(false),[message,setMessage]=useState(''),[showAllCategories,setShowAllCategories]=useState(false),[sort,setSort]=useState('title'),[categoryManager,setCategoryManager]=useState(false),[editingOriginal,setEditingOriginal]=useState(''),[backupPreview,setBackupPreview]=useState('');
  const [backupDiffs,setBackupDiffs]=useState<string[]>([]);
  useEffect(()=>{supabase.auth.getUser().then(({data})=>{setUser(data.user?.id||null);setReady(true)});const {data:{subscription}}=supabase.auth.onAuthStateChange((_event,session)=>setUser(session?.user?.id||null));const shared=new URLSearchParams(location.search).get('url');if(shared){setUrl(shared);setView('add')}return()=>subscription.unsubscribe()},[]);
