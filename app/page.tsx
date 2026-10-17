@@ -48,9 +48,9 @@ function readingEntries(lines:string[]){
    const num=number[1];
    const value=number[2].trim();
    if(value){entries.push({number:num,text:value,bullet:false});continue}
-   entries.push({number:num,text:'',bullet:false});continue;
+   continue;
   }
-  if(entries.length&&entries[entries.length-1].number&&entries[entries.length-1].text===''){
+  if(false && entries.length&&entries[entries.length-1].number&&entries[entries.length-1].text===''){
    entries[entries.length-1].text=line;continue;
   }
   const bullet=/^[-•✔✓●]\s*/.test(line);
