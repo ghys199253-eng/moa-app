@@ -92,7 +92,8 @@ export function structureContent(raw:string,recipe=false):ContentSection[]{
    afterBlank=true;continue;
   }
   const next=lines.slice(i+1).find(x=>x.trim())?.trim()||'';
-  const header=headingOf(rawLine,next,afterBlank,section.entries.length===0&&sections.length===0);
+  const previousType=section.entries.at(-1)?.type;
+  const header=headingOf(rawLine,next,afterBlank||previousType==='bullet'||previousType==='step',section.entries.length===0&&sections.length===0);
   if(header){
    if(header.sub){
     section.entries.push({type:'subheading',text:header.title});
