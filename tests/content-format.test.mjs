@@ -30,3 +30,11 @@ test('plain text and original paragraph breaks are preserved',()=>{
  const section=structureContent('상세 내용\n첫 번째 문단입니다.\n\n두 번째 문단입니다.')[0];
  assert.deepEqual(section.entries.map(x=>x.type),['paragraph','gap','paragraph']);
 });
+
+test('unlisted heading names are sections even without blank lines',()=>{
+ const raw='부동산 검색 사이트\n• 네이버 부동산\n• 직방\n집 보러 갈 때 필수 체크사항\n• 전입신고 가능 여부\n• 보증보험 확인';
+ const sections=structureContent(raw);
+ assert.deepEqual(sections.map(x=>x.heading),['부동산 검색 사이트','집 보러 갈 때 필수 체크사항']);
+ assert.equal(sections[0].entries.filter(x=>x.type==='bullet').length,2);
+ assert.equal(sections[1].entries.filter(x=>x.type==='bullet').length,2);
+});
