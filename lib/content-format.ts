@@ -2,6 +2,7 @@ export type ContentEntry={
   type:'paragraph'|'bullet'|'step'|'subheading'|'gap';
   text:string;
   number?:number;
+  nested?:boolean;
 };
 export type ContentSection={heading:string;entries:ContentEntry[];lines:string[];index:number;implicit:boolean};
 
@@ -38,7 +39,7 @@ function parseLine(raw:string):ContentEntry|null{
   text=n[2].trim();
   const inner=text.match(numeric)||text.match(circled);
   if(inner){
-   return {type:'step',text:inner[2].trim(),number:/^\d+$/.test(inner[1])?Number(inner[1]):numeral.indexOf(inner[1])%10+1};
+   return {type:'step',text:inner[2].trim(),number:/^\d+$/.test(inner[1])?Number(inner[1]):numeral.indexOf(inner[1])%10+1,nested:true};
   }
   return {type:'step',text,number:num};
  }
@@ -51,18 +52,18 @@ function normalizeSteps(entries:ContentEntry[]){
  for(let i=0;i<entries.length;i++){
   if(entries[i].type!=='step')continue;
   let j=i,prev=entries[i].number||0;
-  while(j+1<entries.length&&entries[j+1].type==='step'&&entries[j+1].number===prev+1&&entries[j+1].text.length<=185){j++;prev++}
+  while(j+1<entries.length&&entries[j+1].type==='step'&&entries[j+1].number===prev+1&&entries[j+1].text.length<=125){j++;prev++}
   if(j>i){
    const slice=entries.slice(i,j+1);
-   const long=slice.filter(x=>x.text.length>185).length;
-   if(!long)runs.push({start:i,end:j,score:(j-i+1)*10+(slice[0].number===1?3:0)});
+   const long=slice.filter(x=>x.text.length>125).length;
+   if(!long)runs.push({start:i,end:j,score:(j-i+1)*10+(slice[0].number===1?3:0)+(slice.some(x=>x.nested)?100:0)});
   }
  }
  const best=runs.sort((a,b)=>b.score-a.score||b.start-a.start)[0];
  for(let i=0;i<entries.length;i++){
   const e=entries[i];
   if(e.type!=='step')continue;
-  const genuine=!!best&&i>=best.start&&i<=best.end&&e.text.length<=185;
+  const genuine=!!best&&i>=best.start&&i<=best.end&&e.text.length<=125;
   if(!genuine){
    e.type='paragraph';
    // The raw prefix is retained in edit mode; long transcript fragments are shown as prose.
