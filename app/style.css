@@ -116,3 +116,13 @@ html[data-theme="dark"] mark{background:#695e27;color:#fff}
 .reading-header-title strong{display:block;max-width:100%;text-overflow:ellipsis;overflow:hidden;white-space:nowrap}
 .archive-controls{margin-left:auto}
 @media(max-width:750px){.archive-top{right:16px;bottom:84px}.reading-top{bottom:20px}}
+
+/* Keep each numbered instruction together; color is only a small visual cue */
+.reading-lines{gap:14px}
+.reading-step{display:grid;grid-template-columns:34px minmax(0,1fr);align-items:start;gap:12px;margin:2px 0 6px}
+.reading-step-number{display:grid;place-items:center;width:32px;height:32px;border-radius:50%;background:#e5eee3;color:#335943;font-size:13px;font-weight:700;line-height:1}
+html[data-theme="dark"] .reading-step-number{background:#35483a;color:#d0ead3}
+.reading-step p{padding:0!important;margin:0!important;border:0!important;line-height:1.85!important}
+.reading-plain-bullet{padding-left:13px!important;border-left:2px solid var(--moa-line)}
+.reading-section{margin-bottom:30px}
+.reading-section h3{padding:0 0 9px;border-bottom:1px solid var(--moa-line)}
