@@ -31,7 +31,7 @@ function contentBlocks(raw:string,recipe:boolean){
 function readingParagraphs(text:string){
  // Split only unusually long unstructured text at sentence boundaries.
  if(text.length<170)return [text];
- const sentences=text.split(/(?<=[.!?。])\\s+(?=[가-힣A-Za-z0-9])/).filter(Boolean);
+ const sentences=text.split(/(?<=[.!?。])\s+(?=[가-힣A-Za-z0-9])/).filter(Boolean);
  if(sentences.length<3)return [text];
  const result:string[]=[],group:string[]=[];
  for(const sentence of sentences){if(group.join(' ').length+sentence.length>160&&group.length){result.push(group.join(' '));group.length=0}group.push(sentence)}
@@ -58,10 +58,10 @@ function readingEntries(lines:string[]){
 function factRows(lines:string[]){
  const rows:{label:string;value:string}[]=[];
  for(const line of lines){
-  const match=line.match(/^([^:：\\n]{1,22})\\s*[:：]\\s*(.{1,600})$/);
+  const match=line.match(/^([^:：\n]{1,22})\s*[:：]\s*(.{1,600})$/);
   if(!match)return null;
   const label=match[1].trim(),value=match[2].trim();
-  if(!label||!value||/[.!?。]$/.test(label)||/^https?\\/\\//.test(value))return null;
+  if(!label||!value||/[.!?。]$/.test(label)||/^https?:\/\//.test(value))return null;
   rows.push({label,value});
  }
  return rows.length>=2?rows:null;
