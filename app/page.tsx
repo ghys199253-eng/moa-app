@@ -55,28 +55,6 @@ function renderStructuredContent(section:ContentSection,query:string){
  }
  return <div className="structured-content">{parts}</div>;
 }
-function compactContent(block:{heading:string;lines:string[]},query:string){
- const entries=readingEntries(block.lines);
- const facts=factRows(block.lines);
- if(facts)return <div className="reading-facts">{facts.map((row,i)=><div className="reading-fact" key={i}><span>{row.label}</span><div>{highlightText(row.value,query)}</div></div>)}</div>;
- const isMethod=/만드는 방법|조리 방법|조리 순서/.test(block.heading);
- if(isMethod){
-  const starts=entries.map((e,i)=>e.number==='1'?i:-1).filter(i=>i>=0);
-  let bestStart=-1,bestLength=0;
-  for(const start of starts){let expected=1,count=0;for(let j=start;j<entries.length;j++){const n=Number(entries[j].number);if(n!==expected)break;expected++;count++}if(count>=2&&(count>bestLength||count===bestLength&&start>bestStart)){bestStart=start;bestLength=count}}
-  if(bestStart>=0){for(let i=0;i<entries.length;i++)if(i<bestStart||i>=bestStart+bestLength){entries[i].number=null;entries[i].bullet=true}}
- }
- if(!isMethod)for(const e of entries)if(e.number){e.text=e.number+'. '+e.text;e.number=null;e.bullet=true}
- const numbered=entries.filter(e=>e.number).length;
- const lengthy=numbered===0&&entries.reduce((sum,e)=>sum+e.text.length,0)>520;
- const render=(list:typeof entries)=><div className="reading-lines">{list.map((entry,j)=>entry.number?<div key={j} className="reading-step"><span className="reading-step-number">{entry.number.replace(/[.)]/g,'')}</span><p>{highlightText(entry.text,query)}</p></div>:<div key={j} className={entry.bullet?'reading-plain-bullet':'reading-paragraph-group'}>{readingParagraphs(entry.text).map((paragraph,k)=><p key={k}>{highlightText(paragraph,query)}</p>)}</div>)}</div>;
- if(!lengthy)return render(entries);
- const preview=entries.length>1?entries.slice(0,2):[];
- if(preview.length)return <div className="reading-collapsible">{render(preview)}<details><summary>나머지 내용 보기</summary>{render(entries.slice(2))}</details></div>;
- const paragraphs=readingParagraphs(entries[0]?.text||'');
- if(paragraphs.length<2)return render(entries);
- return <div className="reading-collapsible"><p className="reading-lead">{highlightText(paragraphs[0],query)}</p><details><summary>자세히 보기</summary><div className="reading-lines">{paragraphs.slice(1).map((p,i)=><p key={i}>{highlightText(p,query)}</p>)}</div></details></div>;
-}
 function highlightText(text:string,query:string){
  const q=query.trim();if(!q)return text;
  const at=text.toLocaleLowerCase('ko').indexOf(q.toLocaleLowerCase('ko'));
