@@ -23,10 +23,10 @@ function contentBlocks(raw:string,recipe:boolean){
   const line=rawLines[i];
   const next=rawLines[i+1]||'';
   const genericHeading=line.length<=22&&!/[.!?。]$/.test(line)&&!/^[-•✔✓●\d]/.test(line)&&!line.includes('://')&&/^(?:[-•✔✓●]|\d{1,2}[.)]|[①-⑳])\s*/.test(next)&&current.lines.length>0;
-  const heading=line.match(/^§§(.+?)§§$/)||line.match(labelRe)||(genericHeading?[line,line]:null);
+  const heading=line.match(/^§§(.+?)§§$/)||line.match(labelRe);
   if(heading){flush();current={heading:heading[1],lines:[],index:sections.length};continue}
   // Preserve original sentences; only separate explicitly marked steps or bullets.
-  const parts=line.replace(/\s+(?=(?:[①-⑳]|\d{1,2}[.)]|[✔✓•●])\s+)/g,'\n');
+  const parts=line;
   for(const part of parts.split('\n'))if(part.trim())current.lines.push(part.trim());
  }
  flush();return sections;
