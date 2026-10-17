@@ -91,7 +91,7 @@ export default function Page(){
  useEffect(()=>{document.documentElement.dataset.theme=theme;try{localStorage.setItem('moa-theme',theme)}catch{}},[theme]);
  useEffect(()=>{try{localStorage.setItem('moa-font-size',String(fontSize))}catch{}},[fontSize]);
  useEffect(()=>{const onScroll=()=>setScrollY(window.scrollY);window.addEventListener('scroll',onScroll,{passive:true});return()=>window.removeEventListener('scroll',onScroll)},[]);
- useEffect(()=>{const onPop=()=>{setSelected(null);historyRef.current=false;setView('home')};window.addEventListener('popstate',onPop);return()=>window.removeEventListener('popstate',onPop)},[]);
+ useEffect(()=>{const onPop=()=>{setSelected(null);historyRef.current=false;setView(prev=>prev==='add'||prev==='settings'?prev:'home')};window.addEventListener('popstate',onPop);return()=>window.removeEventListener('popstate',onPop)},[]);
  function openReader(b:B){if(!historyRef.current){window.history.pushState({moaReader:true},'',window.location.href);historyRef.current=true}setReadingY(0);setSelected(b)}
  function closeReader(){if(historyRef.current){historyRef.current=false;window.history.back()}setSelected(null);setReadingY(0)}
  function goTop(){if(selected&&readingRef.current)readingRef.current.scrollTo({top:0,behavior:'smooth'});else window.scrollTo({top:0,behavior:'smooth'})}
