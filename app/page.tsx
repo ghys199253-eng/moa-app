@@ -87,6 +87,24 @@ function sourceHighlights(blocks:{heading:string;lines:string[]}[]){
  if(study)results.push({label:'학습 핵심',value:study.replace(/^[•●✔✓-]\\s*/,'').slice(0,90)});
  return results;
 }
+function renderStructuredContent(section:ContentSection,query:string){
+ const entries=section.entries;
+ const parts:React.ReactNode[]=[];
+ for(let i=0;i<entries.length;i++){
+  const e=entries[i];
+  if(e.type==='gap'){if(parts.length&&i<entries.length-1)parts.push(<div className="structured-gap" key={i} aria-hidden="true"/>);continue}
+  if(e.type==='subheading'){parts.push(<h4 className="structured-subheading" key={i}>{e.text}</h4>);continue}
+  if(e.type==='bullet'||e.type==='step'){
+   const group=[e];let j=i+1;
+   while(j<entries.length&&entries[j].type===e.type){group.push(entries[j]);j++}
+   if(e.type==='step')parts.push(<ol className="structured-steps" start={e.number||1} key={i}>{group.map((item,k)=><li key={k}>{highlightText(item.text,query)}</li>)}</ol>);
+   else parts.push(<ul className="structured-bullets" key={i}>{group.map((item,k)=><li key={k}>{highlightText(item.text,query)}</li>)}</ul>);
+   i=j-1;continue;
+  }
+  parts.push(<p className="structured-paragraph" key={i}>{readingParagraphs(e.text).map((p,k)=><span className="structured-sentence" key={k}>{highlightText(p,query)}</span>)}</p>);
+ }
+ return <div className="structured-content">{parts}</div>;
+}
 function compactContent(block:{heading:string;lines:string[]},query:string){
  const entries=readingEntries(block.lines);
  const facts=factRows(block.lines);
