@@ -127,7 +127,43 @@ export default function Page(){
  if(editing){const {error}=await supabase.from('bookmarks').update(payload).eq('id',editing);if(error)throw error}else{const {data,error}=await supabase.from('bookmarks').insert({...payload,user_id:user}).select('id').single();if(error)throw error;id=data.id}
  reset();setView('home');await load();setMessage('저장했어요');}
  catch(e){setMessage(e instanceof Error?e.message:'저장 실패')}finally{setBusy(false)}}
- async function inspectBackup(file?:File){if(!file)return;try{if(file.size>8_000_000)throw Error('파일이 너무 커요 (최대 8MB)');const rows=csvRows(await file.text());const columns=rows[0]||[];const urlColumn=columns.indexOf('URL');if(urlColumn<0)throw Error('MOA CSV 백업 파일이 아니에요 (URL 열 없음)');const records=rows.slice(1).filter(row=>row[urlColumn]);const known=new Set(items.map(b=>b.normalized_url));let exists=0,missing=0,invalid=0;for(const row of records){try{if(known.has(normalize(row[urlColumn])))exists++;else missing++}catch{invalid++}}setBackupPreview('백업 파일 '+records.length+'개 중 현재 저장된 정보와 일치 '+exists+'개, 현재 없는 정보 '+missing+'개, 주소 오류 '+invalid+'개입니다. 현재 없는 정보에는 과거에 삭제한 항목이 포함될 수 있어요. 안전을 위해 자동 복원하지 않습니다.')}catch(e){setBackupPreview(e instanceof Error?e.message:'파일 확인 실패')}}
+ async function inspectBackup(file?:File){
+  if(!file)return;
+  setBackupDiffs([]);
+  try{
+   if(file.size>8_000_000)throw Error('파일이 너무 커요 (최대 8MB)');
+   const rows=csvRows(await file.text());
+   const columns=rows[0]||[];
+   const urlColumn=columns.indexOf('URL');
+   if(urlColumn<0)throw Error('MOA CSV 백업 파일이 아니에요 (URL 열 없음)');
+   const records=rows.slice(1).filter(row=>row[urlColumn]);
+   const current=new Map(items.map(item=>[item.normalized_url,item]));
+   const read=new Set<string>(),differences:string[]=[];
+   let same=0,changed=0,missing=0,invalid=0,duplicate=0;
+   for(const row of records){
+    let key:string;
+    try{key=normalize(row[urlColumn])}catch{invalid++;continue}
+    if(read.has(key)){duplicate++;continue}
+    read.add(key);
+    const stored=current.get(key);
+    const backupTitle=row[columns.indexOf('제목')]||row[urlColumn];
+    if(!stored){missing++;differences.push('백업에만 있음: '+backupTitle);continue}
+    const checks:[string,string][]=[['제목',stored.title],['설명',stored.description||''],['상세 내용',stored.content_text||''],['메모',stored.personal_memo||'']];
+    const altered=checks.filter(([name,value])=>{const index=columns.indexOf(name);return index>=0&&row[index]!==value}).map(([name])=>name);
+    const catIndex=columns.indexOf('카테고리');
+    if(catIndex>=0){
+     const currentCategory=cats.find(cat=>cat.id===stored.category_id)?.name||'';
+     if(displayCategory(currentCategory)!==displayCategory(row[catIndex]||''))altered.push('카테고리');
+    }
+    if(altered.length){changed++;differences.push('내용 차이: '+backupTitle+' ('+altered.join(', ')+')')}
+    else same++;
+   }
+   const additions=items.filter(item=>!read.has(item.normalized_url));
+   differences.push(...additions.map(item=>'현재 앱에만 있음: '+item.title));
+   setBackupDiffs(differences.slice(0,80));
+   setBackupPreview('백업 '+records.length+'개 · 동일 '+same+'개 · 내용 차이 '+changed+'개 · 백업에만 '+missing+'개 · 현재 앱에만 '+additions.length+'개 · 백업 내 중복 '+duplicate+'개 · 잘못된 URL '+invalid+'개. 이 작업은 조회만 수행하며 복원·수정·삭제하지 않습니다.');
+  }catch(e){setBackupPreview(e instanceof Error?e.message:'파일 확인 실패')}
+ }
  async function renameCategory(cat:Category){const next=prompt('변경할 카테고리 이름',cat.name)?.trim();if(!next||next===cat.name)return;if(cats.some(c=>c.name===next)){setMessage('같은 이름의 카테고리가 있어요. 통합은 자동으로 진행하지 않아요.');return}const count=items.filter(b=>b.category_id===cat.id).length;if(!confirm('카테고리 이름을 변경할까요? 해당 분류의 '+count+'개 자료는 유지됩니다.'))return;const {error}=await supabase.from('categories').update({name:next}).eq('id',cat.id);if(error)setMessage(error.message);else{setFilter('전체');await load();setMessage('카테고리 이름을 변경했어요')}}
  async function remove(b:B){if(!confirm('이 정보를 삭제할까요?'))return;const {error}=await supabase.from('bookmarks').delete().eq('id',b.id);if(error)setMessage(error.message);else{closeReader();await load()}}
  async function toggle(b:B){const {error}=await supabase.from('bookmarks').update({is_favorite:!b.is_favorite}).eq('id',b.id);if(error)setMessage(error.message);else await load()}
