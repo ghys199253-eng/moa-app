@@ -69,6 +69,23 @@ function factRows(lines:string[]){
  }
  return rows.length>=2?rows:null;
 }
+function sectionKind(heading:string){
+ if(/확인 필요|주의|유의|경고|특이사항/.test(heading))return 'notice';
+ if(/재료|준비물|계량|시험 정보|비용|가격|숙소 정보/.test(heading))return 'facts';
+ if(/방법|과정|순서|레시피|활용|학습|공부/.test(heading))return 'steps';
+ if(/Q&A|Q＆A|질문|답변/.test(heading))return 'qa';
+ if(/팁|포인트|요약|핵심|정리/.test(heading))return 'tip';
+ return 'general';
+}
+function sourceHighlights(blocks:{heading:string;lines:string[]}[]){
+ const all=blocks.flatMap(b=>b.lines);
+ const results:{label:string;value:string}[]=[];
+ const time=all.map(s=>s.match(/(?:하루|매일|1일|일일)[^\\n.]{0,25}?(\\d+\\s*[~～-]\\s*\\d+\\s*시간|\\d+\\s*시간)/)).find(Boolean);
+ if(time)results.push({label:'하루 학습시간',value:time[1].replace(/\\s+/g,'')});
+ const study=all.find(s=>/기출.{0,20}(?:반복|회독)|(?:반복|회독).{0,20}기출/.test(s));
+ if(study)results.push({label:'학습 핵심',value:study.replace(/^[•●✔✓-]\\s*/,'').slice(0,90)});
+ return results;
+}
 function compactContent(block:{heading:string;lines:string[]},query:string){
  const entries=readingEntries(block.lines);
  const facts=factRows(block.lines);
@@ -155,7 +172,7 @@ export default function Page(){
   <div className="reading-body"><div className="reading-kicker">{displayCategory(cats.find(c=>c.id===selected.category_id)?.name||'미분류')}</div><h2>{selected.title}</h2>
   <div className="reading-tools"><span>{selected.source_type}</span><div className="font-controls" aria-label="글자 크기"><button aria-label="글자 작게" disabled={fontSize<=14} onClick={()=>setFontSize(n=>Math.max(14,n-2))}><Minus size={16}/></button><span>가</span><button aria-label="글자 크게" disabled={fontSize>=20} onClick={()=>setFontSize(n=>Math.min(20,n+2))}><Plus size={16}/></button></div></div>
   {selected.description&&<div className="reading-description">{selected.description}</div>}
-  {selected.content_text&&<div className="reading-content">{contentBlocks(selected.content_text,displayCategory(cats.find(c=>c.id===selected.category_id)?.name||'')==='레시피').map((block,i)=><section className="reading-section" key={i}>{!(i===0&&(block.heading==='상세 내용'||block.heading==='레시피 내용'))&&<h3>{block.heading}</h3>}{compactContent(block,query)}</section>)}</div>}
+  {selected.content_text&&<div className="reading-content">{(()=>{const blocks=contentBlocks(selected.content_text,readerCategory==='레시피');const highlights=/취업|회계|자격증|공부|학습/.test(readerCategory+' '+selected.title)?sourceHighlights(blocks):[];return <>{highlights.length>0&&<div className="reading-highlight-grid">{highlights.map((item,i)=><div className="reading-highlight" key={i}><span>{item.label}</span><strong>{highlightText(item.value,query)}</strong></div>)}</div>}{blocks.map((block,i)=>{const kind=sectionKind(block.heading);return <section className={'reading-section reading-kind-'+kind} key={i}>{!(i===0&&(block.heading==='상세 내용'||block.heading==='레시피 내용'))&&<h3><span className="reading-heading-symbol" aria-hidden="true">{kind==='notice'?'!':kind==='steps'?'✓':kind==='facts'?'▦':kind==='qa'?'?':kind==='tip'?'✦':'•'}</span>{block.heading}</h3>}{compactContent(block,query)}</section>})}</>})()}</div>}
   {selected.personal_memo&&<section className="reading-section"><h3>내 메모</h3><p className="reading-memo">{selected.personal_memo}</p></section>}
   <div className="reading-actions"><a href={selected.url} target="_blank" rel="noopener noreferrer"><ExternalLink size={16}/> 원본 열기</a><button onClick={()=>startEdit(selected)}><Edit3 size={16}/> 수정</button><button className="danger" onClick={()=>remove(selected)}><Trash2 size={16}/> 삭제</button></div>
   {selectedIndex>=0&&<div className="reading-nav"><button onClick={()=>moveSelected(-1)} disabled={visible.length<2}>← 이전</button><span>{selectedIndex+1} / {visible.length}</span><button onClick={()=>moveSelected(1)} disabled={visible.length<2}>다음 →</button></div>}
