@@ -31,6 +31,31 @@ function contentBlocks(raw:string,recipe:boolean){
  }
  flush();return sections;
 }
+const cleanedGreenOnionRecipe = [
+ '재료·계량/준비',
+ '• 대파 5대',
+ '• 소고기 양지 200g',
+ '• 식용유 2큰술',
+ '• 고춧가루 2큰술',
+ '• 물 1L',
+ '• 다진 마늘 1큰술',
+ '• 국간장·소금 적당량 (정확한 계량은 원본에 없음)',
+ '• 후추 취향껏',
+ '',
+ '만드는 방법',
+ '1. 팬에 식용유 2큰술을 넣고 중불로 달군다.',
+ '2. 소고기 양지 200g을 넣어 겉면이 익을 때까지 볶는다.',
+ '3. 자른 대파 5대를 넣고 숨이 죽을 때까지 볶는다.',
+ '4. 고춧가루 2큰술을 넣어 고추기름을 낸다.',
+ '5. 물 1L를 붓고 약 10분 끓인다.',
+ '6. 다진 마늘과 국간장, 소금으로 간을 맞춘다.',
+ '7. 후추를 취향껏 뿌려 마무리한다.',
+ '',
+ '팁·주의',
+ '• 아이용은 고춧가루를 넣기 전에 덜어낼 수 있다.',
+ '• 버섯·토란대·숙주 없이 대파만 사용해도 된다.',
+ '• 원본의 음성 인식 문장과 반복 문구는 정리했다. 정확한 양념 계량은 원본 영상에서 확인한다.'
+].join('\\n');
 function readingParagraphs(text:string){
  // Split only unusually long unstructured text at sentence boundaries.
  if(text.length<170)return [text];
@@ -155,6 +180,11 @@ export default function Page(){
  function moveSelected(step:number){if(selectedIndex<0||!visible.length)return;setReadingY(0);setSelected(visible[(selectedIndex+step+visible.length)%visible.length])}
  function reset(){setUrl('');setContentText('');setTitle('');setMemo('');setDescription('');setThumb('');setCategory('기타');setStatus('pending');setEditing(null);setEditingOriginal('')}
  function startEdit(b:B){setEditing(b.id);setUrl(b.url);setTitle(b.title);setMemo(b.personal_memo);setDescription(b.description);setContentText(b.content_text||'');setThumb(b.thumbnail_url||'');setCategory(cats.find(c=>c.id===b.category_id)?.name||'기타');setStatus(b.extraction_status);setEditingOriginal(JSON.stringify({url:b.url,title:b.title,description:b.description,content_text:b.content_text||'',personal_memo:b.personal_memo,category:cats.find(c=>c.id===b.category_id)?.name||'기타'}));setView('add');closeReader()}
+ function proposeGreenOnionCorrection(b:B){
+  startEdit(b);
+  setContentText(cleanedGreenOnionRecipe);
+  setMessage('대파 파개장 교정안을 입력했어요. 원본 내용과 비교한 뒤 저장 버튼을 눌러야 변경됩니다.');
+ }
  async function preview(){if(!url.trim())return;setBusy(true);setMessage('');try{const r=await fetch('/api/metadata',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url})});const j=await r.json();if(!r.ok)throw Error(j.error);setTitle(p=>p||j.title||'');setDescription(j.description||'');setThumb(j.thumbnail_url||'');setStatus('success');setMessage('제목과 설명을 가져왔어요')}catch(e){setStatus('failed');setMessage('자동 추출 불가: '+String(e instanceof Error?e.message:e)+' — 직접 입력해도 저장돼요')}finally{setBusy(false)}}
  async function save(){if(!user)return;setBusy(true);setMessage('');try{const normalized=normalize(url);const duplicate=items.find(b=>b.normalized_url===normalized&&b.id!==editing);if(duplicate){openReader(duplicate);throw Error('이미 저장된 링크예요. 기존 정보를 확인한 뒤 수정해 주세요.')}if(editing&&editingOriginal&&JSON.stringify({url:url.trim(),title,description,content_text:contentText,personal_memo:memo,category})!==editingOriginal&&!confirm('기존 정보의 변경사항을 저장할까요?'))return;let categoryId=cats.find(c=>c.name===category)?.id;if(!categoryId){const {data,error}=await supabase.from('categories').upsert({user_id:user,name:category},{onConflict:'user_id,name'}).select('id').single();if(error)throw error;categoryId=data.id}const payload={url:url.trim(),normalized_url:normalized,title:title.trim()||new URL(url).hostname,description,content_text:contentText,thumbnail_url:thumb||null,source_type:source(url),personal_memo:memo,category_id:categoryId,extraction_status:status};let id=editing;
  if(editing){const {error}=await supabase.from('bookmarks').update(payload).eq('id',editing);if(error)throw error}else{const {data,error}=await supabase.from('bookmarks').insert({...payload,user_id:user}).select('id').single();if(error)throw error;id=data.id}
@@ -181,7 +211,7 @@ export default function Page(){
   {selected.description&&<div className="reading-description">{selected.description}</div>}
   {selected.content_text&&<div className="reading-content">{(()=>{const blocks=contentBlocks(selected.content_text,readerCategory==='레시피');const highlights=/취업|회계|자격증|공부|학습/.test(readerCategory+' '+selected.title)?sourceHighlights(blocks):[];return <>{highlights.length>0&&<div className="reading-highlight-grid">{highlights.map((item,i)=><div className="reading-highlight" key={i}><span>{item.label}</span><strong>{highlightText(item.value,query)}</strong></div>)}</div>}{blocks.map((block,i)=>{const kind=sectionKind(block.heading);return <section className={'reading-section reading-kind-'+kind} key={i}>{!(i===0&&(block.heading==='상세 내용'||block.heading==='레시피 내용'))&&<h3><span className="reading-heading-symbol" aria-hidden="true">{kind==='notice'?'!':kind==='steps'?'✓':kind==='facts'?'▦':kind==='qa'?'?':kind==='tip'?'✦':'•'}</span>{block.heading}</h3>}{compactContent(block,query)}</section>})}</>})()}</div>}
   {selected.personal_memo&&<section className="reading-section"><h3>내 메모</h3><p className="reading-memo">{selected.personal_memo}</p></section>}
-  <div className="reading-actions"><a href={selected.url} target="_blank" rel="noopener noreferrer"><ExternalLink size={16}/> 원본 열기</a><button onClick={()=>startEdit(selected)}><Edit3 size={16}/> 수정</button><button className="danger" onClick={()=>remove(selected)}><Trash2 size={16}/> 삭제</button></div>
+  <div className="reading-actions"><a href={selected.url} target="_blank" rel="noopener noreferrer"><ExternalLink size={16}/> 원본 열기</a><button onClick={()=>startEdit(selected)}><Edit3 size={16}/> 수정</button>{selected.url.includes("youtube.com/watch?v=TTUDf92qh9g")&&<button onClick={()=>proposeGreenOnionCorrection(selected)}><Edit3 size={16}/> 레시피 교정안</button>}<button className="danger" onClick={()=>remove(selected)}><Trash2 size={16}/> 삭제</button></div>
   {selectedIndex>=0&&<div className="reading-nav"><button onClick={()=>moveSelected(-1)} disabled={visible.length<2}>← 이전</button><button className="reading-category-return" onClick={()=>{setFilter(readerCategory);setQuery('');setView('home');setShowAllCategories(true);closeReader()}}>목록</button><button onClick={()=>moveSelected(1)} disabled={visible.length<2}>다음 →</button></div>}
   </div>{readingY>260&&<button className="reading-top" onClick={goTop} aria-label="상세 내용 맨 위로"><ChevronUp size={20}/></button>}</div></div>}
  {scrollY>450&&!selected&&<button className="archive-top" onClick={goTop} aria-label="목록 맨 위로"><ChevronUp size={20}/></button>}
