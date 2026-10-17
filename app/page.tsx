@@ -1,7 +1,7 @@
 'use client';
 import {useEffect,useMemo,useRef,useState} from 'react';
 import {supabase} from '@/lib/supabase';
-import {Plus,Search,ExternalLink,Trash2,LogOut,Download,RefreshCw,Link2,Home,Settings,ArrowLeft,Edit3,Sun,Moon,Minus,ChevronUp,X} from 'lucide-react';
+import {Plus,Search,ExternalLink,Trash2,LogOut,Download,RefreshCw,Link2,Home,Settings,ArrowLeft,Edit3,Sun,Moon,Minus,ChevronUp,X,List} from 'lucide-react';
 type Category={id:string;name:string};
 type B={id:string;url:string;normalized_url:string;title:string;description:string;content_text:string|null;thumbnail_url:string|null;source_type:string;personal_memo:string;ai_summary:string|null;category_id:string|null;is_favorite:boolean;created_at:string;updated_at?:string;extraction_status:string};
 const names=['레시피','AI 활용법','생활정보','여행','쇼핑','업무','기타'];
@@ -23,7 +23,7 @@ function contentBlocks(raw:string,recipe:boolean){
   const heading=line.match(/^§§(.+?)§§$/)||line.match(labelRe);
   if(heading){flush();current={heading:heading[1],lines:[],index:sections.length};continue}
   // Preserve original sentences; only separate explicitly marked steps or bullets.
-  const parts=line.replace(/\s+(?=(?:[①-⑳]|\d{1,2}[.)]|[✔✓•●])\s+)/g,'\n');
+  const parts=line.replace(/\\s+(?=(?:[①-⑳]|\\d{1,2}[.)]|[✔✓•●])\\s+)/g,'\\n');
   for(const part of parts.split('\n'))if(part.trim())current.lines.push(part.trim());
  }
  flush();return sections;
@@ -71,13 +71,14 @@ export default function Page(){
  const readingRef=useRef<HTMLDivElement|null>(null),readingPositions=useRef<Record<string,number>>({});
  const [scrollY,setScrollY]=useState(0),[readingY,setReadingY]=useState(0);
  const historyRef=useRef(false);
+ const [readerListOpen,setReaderListOpen]=useState(false),[readerListQuery,setReaderListQuery]=useState('');
  useEffect(()=>{try{const saved=localStorage.getItem('moa-theme');if(saved==='dark'||saved==='light')setTheme(saved);const font=Number(localStorage.getItem('moa-font-size'));if([14,16,18,20].includes(font))setFontSize(font)}catch{}},[]);
  useEffect(()=>{document.documentElement.dataset.theme=theme;try{localStorage.setItem('moa-theme',theme)}catch{}},[theme]);
  useEffect(()=>{try{localStorage.setItem('moa-font-size',String(fontSize))}catch{}},[fontSize]);
  useEffect(()=>{const onScroll=()=>setScrollY(window.scrollY);window.addEventListener('scroll',onScroll,{passive:true});return()=>window.removeEventListener('scroll',onScroll)},[]);
  useEffect(()=>{const onPop=()=>{setSelected(null);historyRef.current=false;setView('home')};window.addEventListener('popstate',onPop);return()=>window.removeEventListener('popstate',onPop)},[]);
- function openReader(b:B){if(!historyRef.current){window.history.pushState({moaReader:true},'',window.location.href);historyRef.current=true}setReadingY(0);setSelected(b)}
- function closeReader(){if(historyRef.current){historyRef.current=false;window.history.back()}setSelected(null);setReadingY(0)}
+ function openReader(b:B){setReaderListOpen(false);if(!historyRef.current){window.history.pushState({moaReader:true},'',window.location.href);historyRef.current=true}setReadingY(0);setSelected(b)}
+ function closeReader(){setReaderListOpen(false);if(historyRef.current){historyRef.current=false;window.history.back()}setSelected(null);setReadingY(0)}
  function goTop(){if(selected&&readingRef.current)readingRef.current.scrollTo({top:0,behavior:'smooth'});else window.scrollTo({top:0,behavior:'smooth'})}
  
  useEffect(()=>{if(!selected)return;const node=readingRef.current;if(node)node.scrollTop=readingPositions.current[selected.id]||0},[selected?.id]);
@@ -88,7 +89,9 @@ export default function Page(){
  const categoryFilters=useMemo(()=>[...new Set(items.map(b=>b.category_id?displayCategory(cats.find(c=>c.id===b.category_id)?.name||'미분류'):'미분류'))].sort((a,b)=>a.localeCompare(b,'ko')),[items,cats]);
  const visible=useMemo(()=>items.filter(b=>(filter==='전체'||displayCategory(cats.find(c=>c.id===b.category_id)?.name||'')===filter||filter==='미분류'&&!b.category_id)&&[b.title,b.description,b.content_text||'',b.personal_memo,b.source_type,b.ai_summary||'',cats.find(c=>c.id===b.category_id)?.name||'',...(tags[b.id]||[])].join(' ').toLocaleLowerCase('ko').includes(query.trim().toLocaleLowerCase('ko'))).sort((a,b)=>sort==='newest'?b.created_at.localeCompare(a.created_at):sort==='updated'?(b.updated_at||b.created_at).localeCompare(a.updated_at||a.created_at):a.title.localeCompare(b.title,'ko',{numeric:true,sensitivity:'base'})),[items,filter,query,cats,tags,sort]);
  const selectedIndex=selected?visible.findIndex(b=>b.id===selected.id):-1;
- function moveSelected(step:number){if(selectedIndex<0||!visible.length)return;setReadingY(0);setSelected(visible[(selectedIndex+step+visible.length)%visible.length])}
+ const readerCategory=selected?displayCategory(cats.find(c=>c.id===selected.category_id)?.name||'미분류'):'';
+ const readerCategoryItems=useMemo(()=>items.filter(b=>(b.category_id?displayCategory(cats.find(c=>c.id===b.category_id)?.name||'미분류'):'미분류')===readerCategory).filter(b=>b.title.toLocaleLowerCase('ko').includes(readerListQuery.toLocaleLowerCase('ko'))).sort((a,b)=>a.title.localeCompare(b.title,'ko',{numeric:true})),[items,cats,readerCategory,readerListQuery]);
+ function moveSelected(step:number){if(selectedIndex<0||!visible.length)return;setReaderListOpen(false);setReadingY(0);setSelected(visible[(selectedIndex+step+visible.length)%visible.length])}
  function reset(){setUrl('');setContentText('');setTitle('');setMemo('');setDescription('');setThumb('');setCategory('기타');setStatus('pending');setEditing(null);setEditingOriginal('')}
  function startEdit(b:B){setEditing(b.id);setUrl(b.url);setTitle(b.title);setMemo(b.personal_memo);setDescription(b.description);setContentText(b.content_text||'');setThumb(b.thumbnail_url||'');setCategory(cats.find(c=>c.id===b.category_id)?.name||'기타');setStatus(b.extraction_status);setEditingOriginal(JSON.stringify({url:b.url,title:b.title,description:b.description,content_text:b.content_text||'',personal_memo:b.personal_memo,category:cats.find(c=>c.id===b.category_id)?.name||'기타'}));setView('add');closeReader()}
  async function preview(){if(!url.trim())return;setBusy(true);setMessage('');try{const r=await fetch('/api/metadata',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url})});const j=await r.json();if(!r.ok)throw Error(j.error);setTitle(p=>p||j.title||'');setDescription(j.description||'');setThumb(j.thumbnail_url||'');setStatus('success');setMessage('제목과 설명을 가져왔어요')}catch(e){setStatus('failed');setMessage('자동 추출 불가: '+String(e instanceof Error?e.message:e)+' — 직접 입력해도 저장돼요')}finally{setBusy(false)}}
@@ -110,7 +113,8 @@ export default function Page(){
  {view==='settings'&&<section className="formcard"><h1>설정</h1><p>내 데이터와 계정을 관리해요.</p><div className="setting"><span>저장한 링크</span><b>{items.length}개</b></div><div className="setting"><span>현재 데이터 백업</span><button onClick={exportCsv}><Download size={16}/> CSV 내보내기</button></div><div className="backup-inspect"><label>CSV 백업 파일 비교하기 (복원하지 않음)<input type="file" accept=".csv,text/csv" onChange={e=>inspectBackup(e.target.files?.[0])}/></label>{backupPreview&&<p role="status">{backupPreview}</p>}</div><p className="hint">백업에는 현재 남아 있는 자료만 포함합니다. 비교만으로는 삭제된 자료와 새 자료를 구별할 수 없어 자동 복원하지 않습니다.</p><div className="setting"><span>카테고리 관리</span><button onClick={()=>setCategoryManager(v=>!v)}>{categoryManager?'접기':'관리하기'}</button></div>{categoryManager&&<div className="category-manage">{cats.map(cat=><div key={cat.id}><span>{cat.name} · {items.filter(b=>b.category_id===cat.id).length}개</span><button onClick={()=>renameCategory(cat)}>이름 변경</button></div>)}<p className="hint">카테고리 삭제·병합은 데이터 손실 위험이 있어 제공하지 않아요.</p></div>}<div className="setting"><span>계정</span><button onClick={()=>supabase.auth.signOut()}><LogOut size={16}/> 로그아웃</button></div><p className="hint">데이터는 로그인한 계정의 Supabase 데이터베이스에 저장됩니다.</p></section>}
  </main><nav className="bottomnav">{[[Home,'home','목록'],[Plus,'add','저장'],[Settings,'settings','설정']].map(([Icon,id,label])=><button key={id as string} className={view===id?'active':''} onClick={()=>{setView(id as string);if(id==='add')reset()}}><Icon size={21}/><small>{label as string}</small></button>)}</nav>
  {selected&&<div className="overlay" onClick={closeReader}><div className="modal reading-modal" ref={readingRef} onScroll={e=>{readingPositions.current[selected.id]=e.currentTarget.scrollTop;setReadingY(e.currentTarget.scrollTop)}} onClick={e=>e.stopPropagation()} style={{'--reading-font-size':fontSize+'px'} as React.CSSProperties}>
-  <div className="reading-header"><button aria-label="목록으로 돌아가기" className="reading-back" onClick={closeReader}><ArrowLeft size={21}/></button><div className="reading-header-title"><strong>{selected.title}</strong><span>{filter==='전체'?'전체 목록':filter}으로 돌아가기</span></div><button className="reading-close" aria-label="목록으로 돌아가기" onClick={closeReader}><X size={19}/></button></div>
+  <div className="reading-header"><button aria-label="목록으로 돌아가기" className="reading-back" onClick={closeReader}><ArrowLeft size={21}/></button><div className="reading-header-title"><strong>{selected.title}</strong><span>{readerCategory}</span></div><button className="reader-list-trigger" onClick={()=>{setReaderListQuery('');setReaderListOpen(true)}}><List size={17}/> 목록</button><button className="reading-close" aria-label="목록으로 돌아가기" onClick={closeReader}><X size={19}/></button></div>
+  {readerListOpen&&<div className="reader-list-overlay" onClick={()=>setReaderListOpen(false)}><div className="reader-list-sheet" onClick={e=>e.stopPropagation()}><div className="reader-list-head"><div><strong>{readerCategory} 목록</strong><span>{readerCategoryItems.length}개</span></div><button aria-label="목록 닫기" onClick={()=>setReaderListOpen(false)}><X size={19}/></button></div><div className="reader-list-search"><Search size={16}/><input aria-label="목록에서 검색" placeholder="제목 검색" value={readerListQuery} onChange={e=>setReaderListQuery(e.target.value)}/></div><div className="reader-list-items">{readerCategoryItems.map(b=><button key={b.id} className={b.id===selected.id?'current':''} onClick={()=>{setReaderListOpen(false);setReadingY(0);setSelected(b)}}><span>{b.title}</span>{b.id===selected.id&&<small>읽는 중</small>}</button>)}{readerCategoryItems.length===0&&<p>검색 결과가 없어요.</p>}</div></div></div>}
   <div className="reading-body"><div className="reading-kicker">{displayCategory(cats.find(c=>c.id===selected.category_id)?.name||'미분류')}</div><h2>{selected.title}</h2>
   <div className="reading-tools"><span>{selected.source_type}</span><div className="font-controls" aria-label="글자 크기"><button aria-label="글자 작게" disabled={fontSize<=14} onClick={()=>setFontSize(n=>Math.max(14,n-2))}><Minus size={16}/></button><span>가</span><button aria-label="글자 크게" disabled={fontSize>=20} onClick={()=>setFontSize(n=>Math.min(20,n+2))}><Plus size={16}/></button></div></div>
   {selected.description&&<div className="reading-description">{selected.description}</div>}
