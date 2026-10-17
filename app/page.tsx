@@ -118,7 +118,7 @@ export default function Page(){
   {selected.personal_memo&&<section className="reading-section"><h3>내 메모</h3><p className="reading-memo">{selected.personal_memo}</p></section>}
   <div className="reading-actions"><a href={selected.url} target="_blank" rel="noopener noreferrer"><ExternalLink size={16}/> 원본 열기</a><button onClick={()=>startEdit(selected)}><Edit3 size={16}/> 수정</button><button className="danger" onClick={()=>remove(selected)}><Trash2 size={16}/> 삭제</button></div>
   {selectedIndex>=0&&<div className="reading-nav"><button onClick={()=>moveSelected(-1)} disabled={visible.length<2}>← 이전</button><span>{selectedIndex+1} / {visible.length}</span><button onClick={()=>moveSelected(1)} disabled={visible.length<2}>다음 →</button></div>}
-  </div>{readingY>260&&<button className="reading-top" onClick={goTop} aria-label="상세 내용 맨 위로"><ChevronUp size={20}/></button>}</div>}
+  </div>{readingY>260&&<button className="reading-top" onClick={goTop} aria-label="상세 내용 맨 위로"><ChevronUp size={20}/></button>}</div></div>}
  {scrollY>450&&!selected&&<button className="archive-top" onClick={goTop} aria-label="목록 맨 위로"><ChevronUp size={20}/></button>}
  </div>
 }
