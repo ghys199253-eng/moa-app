@@ -1,2 +1,19 @@
 import type {MetadataRoute} from 'next';
-export default function manifest():MetadataRoute.Manifest{return {name:'MOA - 나만의 정보 라이브러리',short_name:'MOA',description:'링크를 모으고 다시 찾는 개인 정보 아카이브',start_url:'/',display:'standalone',background_color:'#faf9f6',theme_color:'#faf9f6',icons:[{src:'/icon.svg',sizes:'any',type:'image/svg+xml',purpose:'any'}]}}
+export default function manifest():MetadataRoute.Manifest{
+ return {
+  name:'MOA · 나만의 정보 라이브러리',
+  short_name:'MOA',
+  description:'정보와 링크를 모아 검색하고 정리하는 나만의 라이브러리',
+  id:'/',
+  start_url:'/',
+  scope:'/',
+  display:'standalone',
+  background_color:'#f7f8fa',
+  theme_color:'#263d37',
+  lang:'ko-KR',
+  icons:[
+   {src:'/api/pwa-icon/192',sizes:'192x192',type:'image/png',purpose:'any'},
+   {src:'/api/pwa-icon/512',sizes:'512x512',type:'image/png',purpose:'maskable'}
+  ]
+ };
+}
