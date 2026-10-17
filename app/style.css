@@ -199,3 +199,8 @@ html[data-theme="dark"] .reading-step-number{background:#35483a;color:#d0ead3}
 .reading-kind-steps .reading-plain-bullet:before{position:static!important;content:'✓';color:var(--moa-accent)}
 .reading-kind-tip .reading-heading-symbol{background:var(--moa-bg)}
 @media(max-width:750px){.reading-highlight-grid{gap:7px}.reading-highlight{padding:12px}.reading-kind-notice{padding:12px!important}}
+
+/* Bottom reading navigation: previous / category list / next */
+.reading-nav{display:grid!important;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:center}
+.reading-nav button{width:100%;justify-content:center;min-height:39px}
+.reading-nav .reading-category-return{font-weight:750;color:var(--moa-accent);border:1px solid var(--moa-line);border-radius:9px;background:var(--moa-bg)}
