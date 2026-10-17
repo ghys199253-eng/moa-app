@@ -98,6 +98,7 @@ export default function Page(){
  
  useEffect(()=>{if(!selected)return;const node=readingRef.current;if(node)node.scrollTop=readingPositions.current[selected.id]||0},[selected?.id]);
  const [busy,setBusy]=useState(false),[message,setMessage]=useState(''),[showAllCategories,setShowAllCategories]=useState(false),[sort,setSort]=useState('title'),[categoryManager,setCategoryManager]=useState(false),[editingOriginal,setEditingOriginal]=useState(''),[backupPreview,setBackupPreview]=useState('');
+ const [backupDiffs,setBackupDiffs]=useState<string[]>([]);
  useEffect(()=>{supabase.auth.getUser().then(({data})=>{setUser(data.user?.id||null);setReady(true)});const {data:{subscription}}=supabase.auth.onAuthStateChange((_event,session)=>setUser(session?.user?.id||null));const shared=new URLSearchParams(location.search).get('url');if(shared){setUrl(shared);setView('add')}return()=>subscription.unsubscribe()},[]);
  async function load(){if(!user)return;const [a,b,c,d]=await Promise.all([supabase.from('bookmarks').select('*').order('created_at',{ascending:false}),supabase.from('categories').select('id,name').order('name'),supabase.from('bookmark_tags').select('bookmark_id,tag_id'),supabase.from('tags').select('id,name')]);if(a.error)setMessage(a.error.message);setItems(a.data||[]);setCats(b.data||[]);const lookup=Object.fromEntries((d.data||[]).map(x=>[x.id,x.name]));const t:Record<string,string[]>={};(c.data||[]).forEach(x=>{(t[x.bookmark_id]||=[]).push(lookup[x.tag_id]||'')});setTags(t)}
  useEffect(()=>{if(user)load();else{setItems([]);setCats([])}},[user]);
