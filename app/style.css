@@ -204,3 +204,13 @@ html[data-theme="dark"] .reading-step-number{background:#35483a;color:#d0ead3}
 .reading-nav{display:grid!important;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:center}
 .reading-nav button{width:100%;justify-content:center;min-height:39px}
 .reading-nav .reading-category-return{font-weight:750;color:var(--moa-accent);border:1px solid var(--moa-line);border-radius:9px;background:var(--moa-bg)}
+
+/* Preserve natural Korean line wrapping for imported transcription text. */
+.reading-body .reading-lines,.reading-body .reading-lines p,.reading-body .reading-paragraph-group,.reading-body .reading-plain-bullet,.reading-body .reading-step p{display:block;min-width:0;max-width:100%;text-align:left!important;text-justify:auto!important;word-break:keep-all;overflow-wrap:break-word;white-space:normal;letter-spacing:normal}
+.reading-body .reading-lines{display:flex;flex-direction:column;gap:11px}
+.reading-body .reading-step{display:flex;align-items:flex-start;gap:12px}
+.reading-body .reading-step p{flex:1;margin:0;line-height:1.75}
+.reading-body .reading-paragraph-group p+p{margin-top:10px}
+.reading-body .reading-plain-bullet{position:relative;padding-left:17px}
+.reading-body .reading-plain-bullet:before{position:absolute;left:0;top:0;content:'•';font-weight:700}
+.reading-body .reading-kind-notice .reading-plain-bullet{padding-left:17px}
