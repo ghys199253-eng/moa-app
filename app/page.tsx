@@ -11,16 +11,19 @@ function normalize(raw:string){const u=new URL(raw.trim());if(!['https:','http:'
 function source(url:string){try{const h=new URL(url).hostname.toLowerCase();if(h.includes('youtube.com')||h==='youtu.be')return 'YouTube';if(h.includes('instagram.com'))return 'Instagram';if(h.includes('daum.net'))return 'Daum Cafe';if(h.includes('naver.com'))return 'Naver';return 'Web'}catch{return 'Web'}}
 function previewText(b:B){const raw=b.description||b.content_text||b.personal_memo||'내용을 열어 확인해 보세요';return raw.replace(/(?:^|\n)\s*(?:#{1,4}\s*)?(?:요약|재료|핵심 내용|만드는 방법|팁|설명|방법)\s*[:：]?/g,' ').replace(/\s+/g,' ').slice(0,130)}
 function contentBlocks(raw:string,recipe:boolean){
- const labels='영상 설명|핵심 내용|실행·방법|실행 방법|활용 방법|팁·포인트|특이사항|재료·계량/준비|재료·준비물|재료·계량|재료 준비|재료|만드는 방법|조리 방법|조리 순서|레시피|준비물|주의사항|정리|설명|방법|기타|요약|팁';
+ const labels='공부 방법|학습 방법|학습 계획|오답노트|Q&A|Q＆A|질문과 답변|확인 필요|시험 정보|합격 후기|준비 과정|추천 자료|핵심 요약|영상 설명|핵심 내용|실행·방법|실행 방법|활용 방법|팁·포인트|특이사항|재료·계량/준비|재료·준비물|재료·계량|재료 준비|재료|만드는 방법|조리 방법|조리 순서|레시피|준비물|주의사항|정리|설명|방법|기타|요약|팁';
  const labelRe=new RegExp('^(?:#{1,5}\\s*)?('+labels+')(?:\\s*\\([^\\n)]{1,25}\\))?\\s*[:：]?\\s*$');
  const inlineRe=new RegExp('(?:^|\\s{2,})('+labels+')\\s*[:：]\\s*','g');
  const formatted=raw.replace(/\r\n?/g,'\n').replace(/\u00a0/g,' ').replace(inlineRe,(_m,h:string)=>'\n§§'+h+'§§\n');
  const sections:{heading:string;lines:string[];index:number}[]=[];
  let current={heading:recipe?'레시피 내용':'상세 내용',lines:[] as string[],index:0};
  const flush=()=>{if(current.lines.length)sections.push(current)};
- for(const rawLine of formatted.split('\n')){
-  const line=rawLine.trim();if(!line)continue;
-  const heading=line.match(/^§§(.+?)§§$/)||line.match(labelRe);
+ const rawLines=formatted.split('\n').map(s=>s.trim()).filter(Boolean);
+ for(let i=0;i<rawLines.length;i++){
+  const line=rawLines[i];
+  const next=rawLines[i+1]||'';
+  const genericHeading=line.length<=22&&!/[.!?。]$/.test(line)&&!/^[-•✔✓●\d]/.test(line)&&!line.includes('://')&&/^(?:[-•✔✓●]|\d{1,2}[.)]|[①-⑳])\s*/.test(next)&&current.lines.length>0;
+  const heading=line.match(/^§§(.+?)§§$/)||line.match(labelRe)||(genericHeading?[line,line]:null);
   if(heading){flush();current={heading:heading[1],lines:[],index:sections.length};continue}
   // Preserve original sentences; only separate explicitly marked steps or bullets.
   const parts=line.replace(/\s+(?=(?:[①-⑳]|\d{1,2}[.)]|[✔✓•●])\s+)/g,'\n');
