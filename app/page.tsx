@@ -23,7 +23,7 @@ function contentBlocks(raw:string,recipe:boolean){
   const line=rawLines[i];
   const next=rawLines[i+1]||'';
   const genericHeading=line.length<=22&&!/[.!?。]$/.test(line)&&!/^[-•✔✓●\d]/.test(line)&&!line.includes('://')&&/^(?:[-•✔✓●]|\d{1,2}[.)]|[①-⑳])\s*/.test(next)&&current.lines.length>0;
-  const heading=line.match(/^§§(.+?)§§$/)||line.match(labelRe);
+  const heading=line.match(/^§§(.+?)§§$/)||line.match(labelRe)||line.match(/^#{1,4}\s+(.{2,40})$/)||line.match(/^\*\*(.{2,40})\*\*$/)||(genericHeading?[line,line]:null);
   if(heading){flush();current={heading:heading[1],lines:[],index:sections.length};continue}
   // Preserve original sentences; only separate explicitly marked steps or bullets.
   const parts=line;
