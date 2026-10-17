@@ -59,7 +59,7 @@ const cleanedGreenOnionRecipe = [
 function readingParagraphs(text:string){
  // Split only unusually long unstructured text at sentence boundaries.
  if(text.length<170)return [text];
- const sentences=text.split(/(?<=[.!?。])\s+(?=[가-힣A-Za-z0-9])/).filter(Boolean);
+ const sentences=text.split(/(?<=[.!?。])\s*(?=[가-힣A-Za-z0-9])/).filter(Boolean);
  if(sentences.length<3)return [text];
  const result:string[]=[],group:string[]=[];
  for(const sentence of sentences){if(group.join(' ').length+sentence.length>160&&group.length){result.push(group.join(' '));group.length=0}group.push(sentence)}
