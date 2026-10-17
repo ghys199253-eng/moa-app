@@ -7,6 +7,12 @@ type Category={id:string;name:string};
 type B={id:string;url:string;normalized_url:string;title:string;description:string;content_text:string|null;thumbnail_url:string|null;source_type:string;personal_memo:string;ai_summary:string|null;category_id:string|null;is_favorite:boolean;created_at:string;updated_at?:string;extraction_status:string};
 const names=['레시피','AI 활용법','생활정보','여행','쇼핑','업무','기타'];
 const aliases:Record<string,string>={'요리':'레시피','생활·정보':'생활정보','여행·장소':'여행'};
+function contentTemplate(category:string){
+ if(/요리|레시피/.test(category))return '재료·준비물\n• [재료와 분량]\n\n만드는 방법\n1. [첫 번째 과정]\n2. [두 번째 과정]\n\n팁·주의\n[조리 팁 또는 주의사항]';
+ if(/헤어|메이크업/.test(category))return '준비물\n• [도구나 제품]\n\n실행 방법\n1. [첫 번째 단계]\n2. [두 번째 단계]\n\n팁·주의\n[활용 팁]';
+ return '핵심 내용\n[핵심 정보]\n\n실행 방법\n1. [첫 번째 단계]\n2. [두 번째 단계]\n\n팁·주의\n[참고 사항]';
+}
+
 function displayCategory(name:string){return aliases[name]||name}
 function normalize(raw:string){const u=new URL(raw.trim());if(!['https:','http:'].includes(u.protocol))throw Error('http 또는 https 주소만 가능해요');u.hash='';for(const key of [...u.searchParams.keys()])if(/^utm_|^(fbclid|gclid|igshid)$/i.test(key))u.searchParams.delete(key);u.hostname=u.hostname.toLowerCase();if(u.pathname!=='/')u.pathname=u.pathname.replace(/\/$/,'');return u.toString()}
 function source(url:string){try{const h=new URL(url).hostname.toLowerCase();if(h.includes('youtube.com')||h==='youtu.be')return 'YouTube';if(h.includes('instagram.com'))return 'Instagram';if(h.includes('daum.net'))return 'Daum Cafe';if(h.includes('naver.com'))return 'Naver';return 'Web'}catch{return 'Web'}}
