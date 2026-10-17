@@ -20,8 +20,8 @@ function headingOf(line:string,next:string,afterBlank:boolean,atStart:boolean){
  const square=bare.match(/^\[([^\[\]\n]{1,28})\]$/);
  if(square)return {title:square[1],sub:true};
  if(known.test(bare))return {title:bare,sub:false};
- const nextIsList=/^(?:[-•●✔✓+*]\s*|\d{1,2}[.)]\s+|[➊-➓①-⑩])/.test(next);
- const looksTitle=bare.length>=2&&bare.length<=32&&!/[.!?。]$/.test(bare)&&!/^[-•●✔✓+*\d]/.test(bare)&&!bare.includes('://')&&!bare.includes('>>')&&!/[,，;]/.test(bare)&&!/\s{2}/.test(bare);
+ const nextIsList=/^(?:[-•●✔✓+*]\s+\S|\d{1,2}[.)]\s+\S|[➊-➓①-⑩]\s*\S)/.test(next);
+ const looksTitle=!marker.test(line)&&bare.length>=2&&bare.length<=32&&!/[.!?。]$/.test(bare)&&!/^[-•●✔✓+*\d]/.test(bare)&&!bare.includes('://')&&!bare.includes('>>')&&!/[,，;]/.test(bare)&&!/\s{2}/.test(bare);
  if(looksTitle&&(atStart||afterBlank)&&nextIsList)return {title:bare.replace(/[：:]$/,''),sub:false};
  return null;
 }
