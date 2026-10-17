@@ -170,3 +170,15 @@ html[data-theme="dark"] .reading-step-number{background:#35483a;color:#d0ead3}
 .reading-paragraph-group{display:flex;flex-direction:column;gap:10px}
 .reading-paragraph-group p{margin:0}
 @media(max-width:750px){.reader-list-overlay{top:54px}.reader-list-sheet{max-height:68dvh}.reading-header-title{min-width:0}}
+
+/* Structured archive facts and progressive disclosure */
+.reading-facts{border:1px solid var(--moa-line);border-radius:11px;overflow:hidden;margin:2px 0 8px}
+.reading-fact{display:grid;grid-template-columns:minmax(82px,30%) minmax(0,1fr);border-bottom:1px solid var(--moa-line);font-size:calc(var(--reading-font-size) - 1px);line-height:1.55}
+.reading-fact:last-child{border-bottom:0}
+.reading-fact>span{background:var(--moa-bg);color:var(--moa-muted);padding:10px 11px;font-weight:650}
+.reading-fact>div{padding:10px 12px;overflow-wrap:anywhere}
+.reading-collapsible details{margin-top:10px}
+.reading-collapsible summary{cursor:pointer;display:inline-flex;align-items:center;border:1px solid var(--moa-line);background:var(--moa-bg);border-radius:8px;padding:9px 12px;font-size:12px;color:var(--moa-accent);font-weight:650}
+.reading-collapsible details[open] summary{margin-bottom:12px}
+.reading-lead{font-size:var(--reading-font-size);line-height:1.7;color:var(--moa-text)}
+@media(max-width:750px){.reading-fact{grid-template-columns:minmax(78px,31%) minmax(0,1fr)}.reading-fact>span,.reading-fact>div{padding:9px 10px}}
