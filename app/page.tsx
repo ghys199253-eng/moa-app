@@ -3,6 +3,7 @@ import {useEffect,useMemo,useRef,useState} from 'react';
 import {supabase} from '@/lib/supabase';
 import {structureContent,type ContentSection} from '@/lib/content-format';
 import {auditContent} from '@/lib/content-review';
+import {isNotionBoilerplate} from '@/lib/notion-public';
 import {Plus,Search,ExternalLink,Trash2,LogOut,Download,RefreshCw,Link2,Home,Settings,ArrowLeft,Edit3,Sun,Moon,Minus,ChevronUp,X} from 'lucide-react';
 type InstallPrompt=Event&{prompt:()=>Promise<void>;userChoice?:Promise<{outcome:string}>};
 type Category={id:string;name:string};
@@ -16,8 +17,8 @@ function contentTemplate(category:string){
 }
 
 function displayCategory(name:string){return aliases[name]||name}
-function normalize(raw:string){const u=new URL(raw.trim());if(!['https:','http:'].includes(u.protocol))throw Error('http 또는 https 주소만 가능해요');u.hash='';for(const key of [...u.searchParams.keys()])if(/^utm_|^(fbclid|gclid|igshid)$/i.test(key))u.searchParams.delete(key);u.hostname=u.hostname.toLowerCase();if(u.pathname!=='/')u.pathname=u.pathname.replace(/\/$/,'');return u.toString()}
-function source(url:string){try{const h=new URL(url).hostname.toLowerCase();if(h.includes('youtube.com')||h==='youtu.be')return 'YouTube';if(h.includes('instagram.com'))return 'Instagram';if(h.includes('daum.net'))return 'Daum Cafe';if(h.includes('naver.com'))return 'Naver';return 'Web'}catch{return 'Web'}}
+function normalize(raw:string){const u=new URL(raw.trim());if(!['https:','http:'].includes(u.protocol))throw Error('http 또는 https 주소만 가능해요');u.hash='';for(const key of [...u.searchParams.keys()])if(/^utm_|^(fbclid|gclid|igshid)$/i.test(key)||(key==='source'&&u.hostname.endsWith('.notion.site')&&u.searchParams.get(key)==='copy_link'))u.searchParams.delete(key);u.hostname=u.hostname.toLowerCase();if(u.pathname!=='/')u.pathname=u.pathname.replace(/\/$/,'');return u.toString()}
+function source(url:string){try{const h=new URL(url).hostname.toLowerCase();if(h.includes('youtube.com')||h==='youtu.be')return 'YouTube';if(h.includes('instagram.com'))return 'Instagram';if(h==='notion.so'||h.endsWith('.notion.site'))return 'Notion';if(h.includes('daum.net'))return 'Daum Cafe';if(h.includes('naver.com'))return 'Naver';return 'Web'}catch{return 'Web'}}
 function previewText(b:B){const raw=b.description||b.content_text||b.personal_memo||'내용을 열어 확인해 보세요';return raw.replace(/(?:^|\n)\s*(?:#{1,4}\s*)?(?:요약|재료|핵심 내용|만드는 방법|팁|설명|방법)\s*[:：]?/g,' ').replace(/\s+/g,' ').slice(0,130)}
 function readingParagraphs(text:string){
  // Split only unusually long unstructured text at sentence boundaries.
@@ -143,7 +144,29 @@ export default function Page(){
   setMessage('');setView(next);
  }
  function startEdit(b:B){setEditing(b.id);setUrl(b.url);setTitle(b.title);setMemo(b.personal_memo);setDescription(b.description);setContentText(b.content_text||'');setThumb(b.thumbnail_url||'');setCategory(cats.find(c=>c.id===b.category_id)?.name||'기타');setStatus(b.extraction_status);setEditingOriginal(JSON.stringify({url:b.url,title:b.title,description:b.description,content_text:b.content_text||'',personal_memo:b.personal_memo,category:cats.find(c=>c.id===b.category_id)?.name||'기타'}));setView('add');closeReader()}
- async function preview(){if(!url.trim())return;setBusy(true);setMessage('');try{const r=await fetch('/api/metadata',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url})});const j=await r.json();if(!r.ok)throw Error(j.error);setTitle(p=>p||j.title||'');setDescription(j.description||'');setThumb(j.thumbnail_url||'');setStatus('success');setMessage('제목·설명·썸네일을 가져왔어요. 상세 본문은 자동 추출하지 않으니 원본을 보고 입력해 주세요.')}catch(e){setStatus('failed');setMessage('자동 추출 불가: '+String(e instanceof Error?e.message:e)+' — 직접 입력해도 저장돼요')}finally{setBusy(false)}}
+ async function preview(){
+  if(!url.trim())return;
+  setBusy(true);setMessage('');
+  try{
+   const r=await fetch('/api/metadata',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url})});
+   const j=await r.json();
+   if(!r.ok)throw Error(j.error||'정보를 가져오지 못했어요.');
+   const notion=source(url)==='Notion';
+   setTitle(prev=>!prev.trim()||(notion&&isNotionBoilerplate(prev))?j.title||'':prev);
+   setDescription(prev=>!prev.trim()||(notion&&isNotionBoilerplate(prev))?j.description||'':prev);
+   if(j.thumbnail_url)setThumb(prev=>prev||j.thumbnail_url);
+   if(j.content_text){
+    setContentText(prev=>!prev.trim()||prev===contentTemplate(category)?j.content_text:prev);
+   }
+   setStatus(j.extraction_status||'pending');
+   setMessage(j.warning||(j.content_text
+    ?'공개 페이지에서 읽을 수 있는 본문을 가져왔어요. 원본과 비교한 뒤 저장해 주세요.'
+    :'제목·설명을 확인했어요. 상세 본문은 원본을 보면서 입력해 주세요.'));
+  }catch(e){
+   setStatus('failed');
+   setMessage('자동 추출 불가: '+String(e instanceof Error?e.message:e)+' — 직접 입력해도 저장돼요.');
+  }finally{setBusy(false)}
+ }
  async function save(){if(!user)return;if(!category){setMessage('카테고리를 선택해 주세요.');return}setBusy(true);setMessage('');try{if(/\[(?:재료와 분량|첫 번째 과정|두 번째 과정|조리 팁 또는 주의사항|도구나 제품|활용 팁|핵심 정보|참고 사항)\]/.test(contentText))throw Error('양식의 [안내 문구]를 실제 내용으로 바꾼 후 저장해 주세요.');const normalized=normalize(url);const duplicate=items.find(b=>b.normalized_url===normalized&&b.id!==editing);if(duplicate){openReader(duplicate);throw Error('이미 저장된 링크예요. 기존 정보를 확인한 뒤 수정해 주세요.')}if(editing&&editingOriginal&&JSON.stringify({url:url.trim(),title,description,content_text:contentText,personal_memo:memo,category})!==editingOriginal&&!confirm('기존 정보의 변경사항을 저장할까요?'))return;let categoryId=cats.find(c=>c.name===category)?.id;if(!categoryId){const {data,error}=await supabase.from('categories').upsert({user_id:user,name:category},{onConflict:'user_id,name'}).select('id').single();if(error)throw error;categoryId=data.id}const payload={url:url.trim(),normalized_url:normalized,title:title.trim()||new URL(url).hostname,description,content_text:contentText,thumbnail_url:thumb||null,source_type:source(url),personal_memo:memo,category_id:categoryId,extraction_status:status};let id=editing;
  if(editing){const {error}=await supabase.from('bookmarks').update(payload).eq('id',editing).eq('user_id',user);if(error)throw error}else{const {data,error}=await supabase.from('bookmarks').insert({...payload,user_id:user}).select('id').single();if(error)throw error;id=data.id}
  reset();setView('home');await load();setMessage('저장했어요');}
