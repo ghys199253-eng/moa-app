@@ -5,6 +5,7 @@ import {structureContent,type ContentSection} from '@/lib/content-format';
 import {auditContent} from '@/lib/content-review';
 import {isNotionBoilerplate} from '@/lib/notion-public';
 import {recommendExistingCategory} from '@/lib/category-suggest';
+import {nextAfterRemoving} from '@/lib/reader-navigation';
 import {Plus,Search,ExternalLink,Trash2,LogOut,Download,RefreshCw,Link2,Home,Settings,ArrowLeft,Edit3,Sun,Moon,Minus,ChevronUp,X} from 'lucide-react';
 type InstallPrompt=Event&{prompt:()=>Promise<void>;userChoice?:Promise<{outcome:string}>};
 type Category={id:string;name:string};
@@ -239,7 +240,28 @@ export default function Page(){
   }catch(e){setBackupPreview(e instanceof Error?e.message:'파일 확인 실패')}
  }
  async function renameCategory(cat:Category){if(!user)return;const next=prompt('변경할 카테고리 이름',cat.name)?.trim();if(!next||next===cat.name)return;if(cats.some(c=>c.name===next)){setMessage('같은 이름의 카테고리가 있어요. 통합은 자동으로 진행하지 않아요.');return}const count=items.filter(b=>b.category_id===cat.id).length;if(!confirm('카테고리 이름을 변경할까요? 해당 분류의 '+count+'개 자료는 유지됩니다.'))return;const {error}=await supabase.from('categories').update({name:next}).eq('id',cat.id).eq('user_id',user);if(error)setMessage(error.message);else{setFilter('전체');await load();setMessage('카테고리 이름을 변경했어요')}}
- async function remove(b:B){if(!user)return;if(!confirm('이 정보를 삭제할까요?'))return;const {error}=await supabase.from('bookmarks').delete().eq('id',b.id).eq('user_id',user);if(error)setMessage(error.message);else{closeReader();await load()}}
+ async function remove(b:B){
+  if(!user||busy)return;
+  if(!confirm('이 정보를 삭제할까요?'))return;
+  // Pick the next article from the current filtered and sorted list before
+  // deleting anything. Only close the modal if no visible article remains.
+  const next=nextAfterRemoving(visible,b.id);
+  setBusy(true);
+  try{
+   const {error}=await supabase.from('bookmarks').delete().eq('id',b.id).eq('user_id',user);
+   if(error)throw error;
+   delete readingPositions.current[b.id];
+   if(next){
+    // Keep the same history entry, filter, sort and list scroll position.
+    readingPositions.current[next.id]=0;
+    setReadingY(0);
+    setSelected(next);
+   }else closeReader();
+   await load();
+  }catch(e){
+   setMessage('삭제 실패: '+(e instanceof Error?e.message:'다시 시도해 주세요.'));
+  }finally{setBusy(false)}
+ }
  async function toggle(b:B){if(!user)return;const {error}=await supabase.from('bookmarks').update({is_favorite:!b.is_favorite}).eq('id',b.id).eq('user_id',user);if(error)setMessage(error.message);else await load()}
  function exportCsv(){const header=['URL','제목','출처','카테고리','설명','상세 내용','메모','AI요약','태그','즐겨찾기','저장일'];const rows=items.map(b=>[b.url,b.title,b.source_type,cats.find(c=>c.id===b.category_id)?.name||'',b.description,b.content_text||'',b.personal_memo,b.ai_summary,(tags[b.id]||[]).join('; '),b.is_favorite?'Y':'N',b.created_at]);const data='\uFEFF'+[header,...rows].map(r=>r.map(csvEscape).join(',')).join('\r\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([data],{type:'text/csv;charset=utf-8'}));a.download='moa-backup-'+new Date().toISOString().slice(0,10)+'.csv';a.click();URL.revokeObjectURL(a.href)}
  async function installApp(){if(!installPrompt)return;try{await installPrompt.prompt();await installPrompt.userChoice?.catch(()=>{});setInstallPrompt(null)}catch{setMessage('브라우저 메뉴에서 홈 화면에 추가를 선택해 주세요.')}}
@@ -276,7 +298,7 @@ export default function Page(){
     <button type="button" className="secondary" onClick={()=>startEdit(selected)}>원문 확인·수정하기</button>
    </details>}
   {selected.personal_memo&&<section className="reading-section"><h3>내 메모</h3><p className="reading-memo">{selected.personal_memo}</p></section>}
-  <div className="reading-actions"><a href={selected.url} target="_blank" rel="noopener noreferrer"><ExternalLink size={16}/> 원본 열기</a><button onClick={()=>startEdit(selected)}><Edit3 size={16}/> 수정</button><button className="danger" onClick={()=>remove(selected)}><Trash2 size={16}/> 삭제</button></div>
+  <div className="reading-actions"><a href={selected.url} target="_blank" rel="noopener noreferrer"><ExternalLink size={16}/> 원본 열기</a><button onClick={()=>startEdit(selected)}><Edit3 size={16}/> 수정</button><button className="danger" disabled={busy} onClick={()=>remove(selected)}><Trash2 size={16}/> {busy?'처리 중...':'삭제'}</button></div>
   {selectedIndex>=0&&<div className="reading-nav"><button onClick={()=>moveSelected(-1)} disabled={visible.length<2}>← 이전</button><button className="reading-category-return" onClick={()=>{setFilter(readerCategory);setQuery('');setView('home');setShowAllCategories(true);closeReader()}}>목록</button><button onClick={()=>moveSelected(1)} disabled={visible.length<2}>다음 →</button></div>}
   </div>{readingY>260&&<button className="reading-top" onClick={goTop} aria-label="상세 내용 맨 위로"><ChevronUp size={20}/></button>}</div></div>}
  {scrollY>450&&!selected&&<button className="archive-top" onClick={goTop} aria-label="목록 맨 위로"><ChevronUp size={20}/></button>}
