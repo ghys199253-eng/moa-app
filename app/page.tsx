@@ -4,6 +4,7 @@ import {supabase} from '@/lib/supabase';
 import {structureContent,type ContentSection} from '@/lib/content-format';
 import {auditContent} from '@/lib/content-review';
 import {isNotionBoilerplate} from '@/lib/notion-public';
+import {recommendExistingCategory} from '@/lib/category-suggest';
 import {Plus,Search,ExternalLink,Trash2,LogOut,Download,RefreshCw,Link2,Home,Settings,ArrowLeft,Edit3,Sun,Moon,Minus,ChevronUp,X} from 'lucide-react';
 type InstallPrompt=Event&{prompt:()=>Promise<void>;userChoice?:Promise<{outcome:string}>};
 type Category={id:string;name:string};
@@ -91,6 +92,8 @@ export default function Page(){
  const [scrollY,setScrollY]=useState(0),[readingY,setReadingY]=useState(0);
  const historyRef=useRef(false);
  const autoTitleRef=useRef('');
+ const autoCategoryRef=useRef('');
+ const manuallyChosenCategoryRef=useRef(false);
  useEffect(()=>{
   const onPrompt=(e:Event)=>{e.preventDefault();setInstallPrompt(e as InstallPrompt)};
   const onInstalled=()=>setInstallPrompt(null);
@@ -121,6 +124,7 @@ export default function Page(){
 
  const [busy,setBusy]=useState(false),[message,setMessage]=useState(''),[showAllCategories,setShowAllCategories]=useState(false),[sort,setSort]=useState('title'),[categoryManager,setCategoryManager]=useState(false),[editingOriginal,setEditingOriginal]=useState(''),[backupPreview,setBackupPreview]=useState('');
  const [backupDiffs,setBackupDiffs]=useState<string[]>([]);
+ const [categoryHint,setCategoryHint]=useState('');
  useEffect(()=>{supabase.auth.getUser().then(({data})=>{setUser(data.user?.id||null);setReady(true)});const {data:{subscription}}=supabase.auth.onAuthStateChange((_event,session)=>setUser(session?.user?.id||null));const shared=new URLSearchParams(location.search).get('url');if(shared){setUrl(shared);setView('add')}return()=>subscription.unsubscribe()},[]);
  async function load(){if(!user)return;const [a,b,c,d]=await Promise.all([supabase.from('bookmarks').select('*').eq('user_id',user).order('created_at',{ascending:false}),supabase.from('categories').select('id,name').eq('user_id',user).order('name'),supabase.from('bookmark_tags').select('bookmark_id,tag_id'),supabase.from('tags').select('id,name')]);if(a.error)setMessage(a.error.message);setItems(a.data||[]);setCats(b.data||[]);const lookup=Object.fromEntries((d.data||[]).map(x=>[x.id,x.name]));const t:Record<string,string[]>={};(c.data||[]).forEach(x=>{(t[x.bookmark_id]||=[]).push(lookup[x.tag_id]||'')});setTags(t)}
  useEffect(()=>{if(user)load();else{setItems([]);setCats([])}},[user]);
@@ -131,7 +135,7 @@ export default function Page(){
  const readerCategory=selected?displayCategory(cats.find(c=>c.id===selected.category_id)?.name||'미분류'):'';
 
  function moveSelected(step:number){if(selectedIndex<0||!visible.length)return;setReadingY(0);setSelected(visible[(selectedIndex+step+visible.length)%visible.length])}
- function reset(){autoTitleRef.current='';setUrl('');setContentText('');setTitle('');setMemo('');setDescription('');setThumb('');setCategory('');setStatus('pending');setEditing(null);setEditingOriginal('')}
+ function reset(){autoTitleRef.current='';autoCategoryRef.current='';manuallyChosenCategoryRef.current=false;setCategoryHint('');setUrl('');setContentText('');setTitle('');setMemo('');setDescription('');setThumb('');setCategory('');setStatus('pending');setEditing(null);setEditingOriginal('')}
 
  function hasPendingEdit(){
   if(view!=='add')return false;
@@ -144,7 +148,15 @@ export default function Page(){
   if(next==='add')reset();
   setMessage('');setView(next);
  }
- function startEdit(b:B){autoTitleRef.current='';setEditing(b.id);setUrl(b.url);setTitle(b.title);setMemo(b.personal_memo);setDescription(b.description);setContentText(b.content_text||'');setThumb(b.thumbnail_url||'');setCategory(cats.find(c=>c.id===b.category_id)?.name||'기타');setStatus(b.extraction_status);setEditingOriginal(JSON.stringify({url:b.url,title:b.title,description:b.description,content_text:b.content_text||'',personal_memo:b.personal_memo,category:cats.find(c=>c.id===b.category_id)?.name||'기타'}));setView('add');closeReader()}
+ function startEdit(b:B){autoTitleRef.current='';autoCategoryRef.current='';manuallyChosenCategoryRef.current=true;setCategoryHint('');setEditing(b.id);setUrl(b.url);setTitle(b.title);setMemo(b.personal_memo);setDescription(b.description);setContentText(b.content_text||'');setThumb(b.thumbnail_url||'');setCategory(cats.find(c=>c.id===b.category_id)?.name||'기타');setStatus(b.extraction_status);setEditingOriginal(JSON.stringify({url:b.url,title:b.title,description:b.description,content_text:b.content_text||'',personal_memo:b.personal_memo,category:cats.find(c=>c.id===b.category_id)?.name||'기타'}));setView('add');closeReader()}
+ function changeUrl(next:string){
+  setUrl(next);setCategoryHint('');
+  if(!editing&&!manuallyChosenCategoryRef.current&&autoCategoryRef.current){
+   const previous=autoCategoryRef.current;
+   setCategory(value=>value===previous?'':value);
+   autoCategoryRef.current='';
+  }
+ }
  async function preview(){
   if(!url.trim())return;
   setBusy(true);setMessage('');
@@ -160,6 +172,21 @@ export default function Page(){
    if(j.thumbnail_url)setThumb(prev=>prev||j.thumbnail_url);
    if(j.content_text){
     setContentText(prev=>!prev.trim()||prev===contentTemplate(category)?j.content_text:prev);
+   }
+   // Suggest only for new links using the categories already saved in MOA.
+   // A category chosen by the user always takes priority over any recommendation.
+   if(!editing&&!manuallyChosenCategoryRef.current){
+    const suggested=recommendExistingCategory({title:j.title,description:j.description,content_text:j.content_text},cats.map(cat=>cat.name));
+    const previousAuto=autoCategoryRef.current;
+    if(suggested){
+     setCategory(current=>!current||current===previousAuto?suggested:current);
+     autoCategoryRef.current=suggested;
+     setCategoryHint('자동 추천: '+displayCategory(suggested)+' · 저장 전에 확인하거나 변경할 수 있어요.');
+    }else{
+     if(previousAuto)setCategory(current=>current===previousAuto?'':current);
+     autoCategoryRef.current='';
+     setCategoryHint('카테고리를 확실히 판단하지 못했어요. 직접 선택해 주세요.');
+    }
    }
    setStatus(j.extraction_status||'pending');
    setMessage(j.warning||(j.content_text
@@ -221,7 +248,7 @@ export default function Page(){
  if(!user)return <main className="auth"><div className="logo">moa.</div><h1>필요한 정보, 여기 다 모아</h1><p>나만의 정보 라이브러리에 오신 걸 환영해요.</p><form onSubmit={e=>{e.preventDefault();auth()}}><label>이메일<input type="email" required value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com"/></label><label>비밀번호<input type="password" minLength={6} required value={password} onChange={e=>setPassword(e.target.value)} placeholder="6자 이상"/></label><button className="primary" disabled={busy}>{signup?'회원가입':'로그인'}</button></form><button className="textbutton" onClick={()=>setSignup(!signup)}>{signup?'이미 계정이 있어요 · 로그인':'처음이신가요? 회원가입'}</button>{message&&<p className="notice">{message}</p>}</main>;
  return <div className="shell"><aside className="sidebar"><div className="logo">moa.</div>{[['home',Home,'아카이브'],['add',Plus,'새 링크 저장'],['settings',Settings,'설정']].map(([id,Icon,label])=><button key={id as string} className={'nav '+(view===id?'active':'')} onClick={()=>navigateTo(id as string)}><Icon size={19}/>{label as string}</button>)}</aside><main className="content"><header><div className="brandmobile">moa.</div><div className="header-actions"><button className="iconbutton" aria-label={theme==='dark'?'라이트 모드':'다크 모드'} onClick={()=>setTheme(v=>v==='dark'?'light':'dark')}>{theme==='dark'?<Sun size={19}/>:<Moon size={19}/>}</button><button className="iconbutton" aria-label="새로고침" onClick={load}><RefreshCw size={18}/></button></div></header>{message&&<div className="notice">{message}<button onClick={()=>setMessage('')}>×</button></div>}
  {(view==='home'||view==='library')&&<><div className="heading"><div><h1>내 아카이브</h1></div><button className="primary add" onClick={()=>navigateTo('add')}><Plus size={17}/> 링크 저장</button></div><div className="archive-toolbar"><div className="search"><Search size={19}/><input aria-label="저장 정보 검색" placeholder="정보 검색" value={query} onChange={e=>setQuery(e.target.value)}/></div></div><div className="category-tabs" aria-label="카테고리 선택"><button className={filter==='전체'?'active':''} onClick={()=>setFilter('전체')}>전체</button>{categoryFilters.slice(0,3).map(n=><button key={n} className={filter===n?'active':''} onClick={()=>setFilter(n)}>{n}</button>)}<button className={'category-expand '+(showAllCategories?'active':'')} onClick={()=>setShowAllCategories(v=>!v)} aria-expanded={showAllCategories}>더보기 <span aria-hidden="true">{showAllCategories?'⌃':'⌄'}</span></button></div>{showAllCategories&&<div className="category-panel">{categoryFilters.map(n=><button key={n} className={filter===n?'active':''} onClick={()=>{setFilter(n);setShowAllCategories(false)}}>{n}<span>{items.filter(b=>(b.category_id?displayCategory(cats.find(c=>c.id===b.category_id)?.name||'미분류'):'미분류')===n).length}</span></button>)}</div>}<div className="archive-results"><strong>{filter==='전체'?'전체':filter}</strong><span>{visible.length}</span><div className="archive-controls"><label>정렬 <select value={sort} onChange={e=>setSort(e.target.value)}><option value="title">가나다순</option><option value="newest">최근 저장순</option><option value="updated">최근 수정순</option></select></label></div></div><div className="cards compact-list">{visible.map(b=><article key={b.id} className="item" role="button" tabIndex={0} aria-label={b.title+" 상세 보기"} onClick={()=>openReader(b)} onKeyDown={e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();openReader(b)}}}><div className="itemtop"><span className="pill">{displayCategory(cats.find(c=>c.id===b.category_id)?.name||'미분류')}</span></div><h3>{highlightText(b.title,query)}</h3><p>{highlightText(searchPreview(b,query),query)}</p><div className="itembottom"><span>{b.source_type}</span><ExternalLink size={14}/></div></article>)}</div>{visible.length===0&&<div className="empty">조건에 맞는 정보가 없어요. 새 링크를 저장해 보세요.</div>}</>}
- {view==='add'&&<section className="formcard"><button className="back" onClick={()=>navigateTo('home')}><ArrowLeft size={16}/> 돌아가기</button><h1>{editing?'저장 정보 수정':'새 링크 저장'}</h1><label>링크 주소 *<div className="urlrow"><input type="url" value={url} onChange={e=>setUrl(e.target.value)} placeholder="https://..."/><button type="button" onClick={preview} disabled={busy||!url}><Link2 size={16}/> 정보 가져오기</button></div></label><label>제목<input value={title} onChange={e=>{autoTitleRef.current='';setTitle(e.target.value)}} placeholder="자동으로 가져오거나 직접 입력"/></label><label>카테고리 *<select value={category} required onChange={e=>setCategory(e.target.value)}><option value="" disabled>카테고리를 선택하세요</option>{[...cats.map(c=>c.name),...names.filter(n=>!cats.some(c=>displayCategory(c.name)===n))].map(n=><option key={n} value={n}>{displayCategory(n)}{cats.some(c=>c.name===n)?'':' · 새 분류'}</option>)}</select></label><label>설명<textarea rows={2} value={description} onChange={e=>setDescription(e.target.value)} placeholder="원본 설명"/></label><label>상세 내용<textarea rows={10} value={contentText} onChange={e=>setContentText(e.target.value)} placeholder="소제목은 한 줄로, 목록은 •, 과정은 1.처럼 작성해 주세요"/></label>
+ {view==='add'&&<section className="formcard"><button className="back" onClick={()=>navigateTo('home')}><ArrowLeft size={16}/> 돌아가기</button><h1>{editing?'저장 정보 수정':'새 링크 저장'}</h1><label>링크 주소 *<div className="urlrow"><input type="url" value={url} onChange={e=>changeUrl(e.target.value)} placeholder="https://..."/><button type="button" onClick={preview} disabled={busy||!url}><Link2 size={16}/> 정보 가져오기</button></div></label><label>제목<input value={title} onChange={e=>{autoTitleRef.current='';setTitle(e.target.value)}} placeholder="자동으로 가져오거나 직접 입력"/></label><label>카테고리 *<select value={category} required onChange={e=>{manuallyChosenCategoryRef.current=true;autoCategoryRef.current='';setCategoryHint('');setCategory(e.target.value)}}><option value="" disabled>카테고리를 선택하세요</option>{[...cats.map(c=>c.name),...names.filter(n=>!cats.some(c=>displayCategory(c.name)===n))].map(n=><option key={n} value={n}>{displayCategory(n)}{cats.some(c=>c.name===n)?'':' · 새 분류'}</option>)}</select></label>{!editing&&categoryHint&&<p className="hint" role="status">{categoryHint}</p>}<label>설명<textarea rows={2} value={description} onChange={e=>setDescription(e.target.value)} placeholder="원본 설명"/></label><label>상세 내용<textarea rows={10} value={contentText} onChange={e=>setContentText(e.target.value)} placeholder="소제목은 한 줄로, 목록은 •, 과정은 1.처럼 작성해 주세요"/></label>
  <div className="entry-format-guide"><span>입력한 문단과 엔터를 유지하고, 소제목·목록·순서를 자동으로 구분해 보여줘요.</span>{!contentText.trim()&&<button type="button" className="secondary" onClick={()=>setContentText(contentTemplate(category))}>추천 양식 넣기</button>}</div>
  {contentText.trim()&&auditContent(contentText).length>0&&<div className="entry-warnings" role="status"><strong>저장 전에 확인할 부분</strong><ul>{auditContent(contentText).map((issue,i)=><li key={i}><strong>{issue.label}</strong>{issue.detail}{issue.lines.length>0?' (줄 '+issue.lines.slice(0,5).join(', ')+(issue.lines.length>5?' 외':'')+')':''}</li>)}</ul></div>}
  {contentText.trim()&&<details className="entry-preview"><summary>상세 내용 미리보기 · 저장 전 확인</summary><div className="reading-content entry-preview-body">{structureContent(contentText,/요리|레시피/.test(category)).map((block,i)=><section key={i} className={'reading-section reading-kind-'+sectionKind(block.heading)}>{!block.implicit&&<h3>{block.heading}</h3>}{renderStructuredContent(block,'')}</section>)}</div></details>}<label>나만의 메모<textarea rows={4} value={memo} onChange={e=>setMemo(e.target.value)} placeholder="다시 볼 때 기억하고 싶은 내용"/></label><button className="primary wide" disabled={busy||!url.trim()} onClick={save}>{busy?'처리 중...':editing?'변경사항 저장':'라이브러리에 저장'}</button></section>}
