@@ -1,7 +1,7 @@
 import {NextRequest,NextResponse} from 'next/server';
 import {serverSupabase} from '@/lib/server';
 import {isNotionBoilerplate,isNotionPage,notionSlugTitle,readPublicNotionPage} from '@/lib/notion-public';
-import {readFirecrawlPublicPage} from '@/lib/firecrawl-public';
+import {canSendPublicUrlToFirecrawl,readFirecrawlPublicPage} from '@/lib/firecrawl-public';
 export const runtime='nodejs';
 
 function privateIp(host:string){
@@ -85,46 +85,60 @@ export async function POST(req:NextRequest){
   if(typeof url!=='string'||!url.trim()||url.length>4096)throw Error('URL을 확인해 주세요');
   const target=safeUrl(url);
   const notion=isNotionPage(target);
-  // Read metadata and Notion's public blocks in parallel to keep the preview responsive.
+
+  // First try the original website and its public Notion blocks. This only
+  // reads previews and never creates or updates database rows.
   const [htmlResult,publicPage]=await Promise.all([
    readHtmlMetadata(target)
     .then(data=>({data,error:''}))
-    .catch(e=>({data:null,error:e instanceof Error?e.message:'페이지를 열 수 없습니다'})),
+    .catch(e=>({data:null,error:e instanceof Error?e.message:'사이트에 접근할 수 없습니다'})),
    notion?readPublicNotionPage(target):Promise.resolve(null)
   ]);
   const html=htmlResult.data;
-  if(!notion){
-   if(!html)throw Error(htmlResult.error||'정보 추출 실패');
-   return NextResponse.json({...html,extraction_status:'success',content_text:''});
-  }
+  const notionBody=publicPage?.content_text||'';
 
-  // Only a real Notion document body counts as extracted data. Firecrawl is an
-  // optional, server-only fallback; lack of a key does not block manual entry.
-  const firecrawlPage=publicPage?.content_text?null:await readFirecrawlPublicPage(target);
-  const pageTitle=html?.title&&!isNotionBoilerplate(html.title)?html.title:'';
-  const actualTitle=firecrawlPage?.title||publicPage?.title||pageTitle;
-  const title=actualTitle||notionSlugTitle(target);
-  const description=firecrawlPage?.description||
-    (html?.description&&!isNotionBoilerplate(html.description)?html.description:'');
-  const content_text=firecrawlPage?.content_text||publicPage?.content_text||'';
-  const verified=Boolean(actualTitle);
-  const needsServerKey=!process.env.FIRECRAWL_API_KEY?.trim();
-  const warning=firecrawlPage?.content_text
-   ?'Firecrawl로 공개 Notion 문서의 실제 내용을 가져왔어요. 표·이미지·하위 페이지 일부는 빠질 수 있으니 저장 전에 원본과 비교해 주세요.'
-   :content_text
-    ?'Notion 공개 문서 내용을 가져왔어요. 표·이미지·하위 페이지 등 일부는 빠질 수 있으니 저장 전에 원본과 비교해 주세요.'
-    :!verified
-     ?'Notion 문서 본문에 접근하지 못해 주소에서 임시 제목을 만들었어요. 정확한 제목·내용은 원본에서 확인해 주세요.'+
-      (needsServerKey?' Firecrawl 서버 API 키를 설정하면 다시 시도할 수 있어요.':' Firecrawl에서도 본문을 확인하지 못했어요.')
-     :'제목은 확인했지만 Notion 상세 본문을 가져오지 못했어요. 원본을 보고 직접 입력해 주세요.';
+  // Non-Notion HTML previews have title/description but no verified body.
+  // One on-demand Firecrawl request is permitted when the real body is absent.
+  const firecrawlPage=notionBody?null:await readFirecrawlPublicPage(target);
+  const content_text=firecrawlPage?.content_text||notionBody;
+  const rawHtmlTitle=html?.title||'';
+  const htmlTitle=notion&&isNotionBoilerplate(rawHtmlTitle)?'':rawHtmlTitle;
+  const rawHtmlDescription=html?.description||'';
+  const htmlDescription=notion&&isNotionBoilerplate(rawHtmlDescription)?'':rawHtmlDescription;
+  const title=firecrawlPage?.title||publicPage?.title||htmlTitle||
+   (notion?notionSlugTitle(target):'');
+  const description=firecrawlPage?.description||htmlDescription;
+  const thumbnail_url=firecrawlPage?.thumbnail_url||html?.thumbnail_url||'';
+  const verifiedBody=Boolean(content_text.trim());
+  const configured=Boolean(process.env.FIRECRAWL_API_KEY?.trim());
+  const excluded=!canSendPublicUrlToFirecrawl(target);
+
+  let warning='';
+  if(verifiedBody){
+   warning=firecrawlPage
+    ?'Firecrawl로 공개 웹페이지 본문을 가져왔어요. 일부 표·이미지·댓글·하위 페이지는 빠질 수 있으니 저장 전에 원본과 비교해 주세요.'
+    :'Notion 공개 문서 본문을 가져왔어요. 일부 표·이미지·하위 페이지는 빠질 수 있으니 저장 전에 원본과 비교해 주세요.';
+  }else if(title||description){
+   warning='제목·설명만 확인했어요. 실제 상세 본문은 아직 가져오지 못했습니다. 공개 글인지 확인하고 원본을 보며 입력해 주세요.';
+  }else if(notion){
+   warning='Notion 본문에 접근하지 못해 주소에서 임시 제목만 만들었어요. 저장 전 원본에서 정확한 제목과 내용을 확인해 주세요.';
+  }else{
+   warning='사이트에서 제목과 본문을 가져오지 못했어요. 공개 링크인지 확인하고 직접 입력해 주세요.';
+  }
+  if(!verifiedBody){
+   if(excluded)warning+=' 개인 인증정보가 포함되었거나 제한된 주소여서 외부 추출 서비스에는 전달하지 않았어요.';
+   else if(!configured)warning+=' Firecrawl 서버 API 키가 설정되면 추가 추출을 시도할 수 있어요.';
+   else warning+=' 일부 사이트(인스타그램·회원 전용 카페 등)는 로그인이나 접근 제한으로 자동 추출이 불가능할 수 있어요.';
+  }
   return NextResponse.json({
-   title,description,thumbnail_url:firecrawlPage?.thumbnail_url||html?.thumbnail_url||'',
-   content_text,
-   metadata_source:firecrawlPage?'firecrawl':publicPage?'notion_public':verified?'page_metadata':'url_guess',
-   extraction_status:content_text?'success':'pending',
+   title:title.slice(0,300),description:description.slice(0,1200),thumbnail_url,
+   content_text,metadata_source:firecrawlPage?'firecrawl':notionBody?'notion_public':html?'page_metadata':notion?'url_guess':'none',
+   extraction_status:verifiedBody?'success':'pending',
    warning
   });
  }catch(e){
-  return NextResponse.json({error:e instanceof Error?e.message:'정보 추출 실패',extraction_status:'failed'},{status:422});
+  return NextResponse.json({
+   error:e instanceof Error?e.message:'정보 추출 실패',extraction_status:'failed'
+  },{status:422});
  }
 }
